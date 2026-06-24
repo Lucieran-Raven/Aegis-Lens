@@ -14,7 +14,7 @@ RUN npm ci && \
     npm cache clean --force
 
 # Copy source code
-COPY tsconfig.json rollup.config.js ./
+COPY tsconfig.json rollup.config.cjs ./
 COPY src ./src
 # COPY proto ./proto # Proto directory is empty, skip for now
 
@@ -61,7 +61,7 @@ WORKDIR /app
 
 # Copy all files for development
 COPY package.json package-lock.json ./
-COPY tsconfig.json rollup.config.js ./
+COPY tsconfig.json rollup.config.cjs ./
 COPY src ./src
 # COPY proto ./proto # Proto directory is empty, skip for now
 

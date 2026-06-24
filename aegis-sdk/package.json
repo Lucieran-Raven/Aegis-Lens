@@ -7,9 +7,9 @@
   "types": "dist/index.d.ts",
   "sideEffects": false,
   "scripts": {
-    "build": "rollup -c",
-    "build:watch": "rollup -c -w",
-    "dev": "rollup -c -w",
+    "build": "rollup -c rollup.config.cjs",
+    "build:watch": "rollup -c rollup.config.cjs -w",
+    "dev": "rollup -c rollup.config.cjs -w",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src --ext .ts",
     "test": "jest",
