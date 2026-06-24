@@ -2,7 +2,7 @@
 # Multi-stage build for optimized production image
 
 # Stage 1: Build stage - Compile Go application
-FROM golang:1.21-alpine AS builder
+FROM golang:1.25-alpine AS builder
 
 WORKDIR /build
 
@@ -60,7 +60,7 @@ EXPOSE 8080
 CMD ["./aegis-backend"]
 
 # Stage 3: Development stage - For local development
-FROM golang:1.21-alpine AS development
+FROM golang:1.25-alpine AS development
 
 WORKDIR /app
 
@@ -81,7 +81,7 @@ ENV PORT=8080
 CMD ["go", "run", "main.go"]
 
 # Stage 4: Test stage - For running tests
-FROM golang:1.21-alpine AS test
+FROM golang:1.25-alpine AS test
 
 WORKDIR /build
 
@@ -98,7 +98,7 @@ RUN go mod download
 RUN go test -v ./...
 
 # Stage 5: Benchmark stage - For performance testing
-FROM golang:1.21-alpine AS benchmark
+FROM golang:1.25-alpine AS benchmark
 
 WORKDIR /build
 
