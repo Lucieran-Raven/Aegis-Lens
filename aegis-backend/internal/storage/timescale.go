@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -238,4 +237,9 @@ func (t *TimescaleClient) GetStats(ctx context.Context, timeRange time.Duration)
 // Close closes the connection pool
 func (t *TimescaleClient) Close() {
 	t.pool.Close()
+}
+
+// Ping checks database connectivity
+func (t *TimescaleClient) Ping(ctx context.Context) error {
+	return t.pool.Ping(ctx)
 }

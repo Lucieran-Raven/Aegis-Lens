@@ -9,7 +9,7 @@ import { PayloadBuilder } from './payload-builder';
 import { AegisCrypto, KeyPair } from './crypto';
 import { FrameCollector, FrameCollectorConfig } from './frame-collector';
 import { WorkerBridge, WorkerBridgeConfig } from './worker-bridge';
-import { CameraTimingSignal } from './proto/session';
+import { CameraTimingSignal, SessionVerifyResponse } from './proto/session';
 
 export interface AegisConfig extends AegisClientConfig {
   videoElement: HTMLVideoElement;
@@ -131,7 +131,7 @@ export class AegisLens {
   /**
    * Build and submit telemetry payload for verification
    */
-  async submitTelemetry(cameraTiming: CameraTimingSignal): Promise<any> {
+  async submitTelemetry(cameraTiming: CameraTimingSignal): Promise<SessionVerifyResponse> {
     if (!this.sessionId || !this.keyPair) {
       throw new Error('No active session or key pair');
     }

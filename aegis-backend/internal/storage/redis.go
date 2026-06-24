@@ -125,3 +125,8 @@ func (r *RedisClient) DeleteSession(ctx context.Context, sessionID string) error
 func (r *RedisClient) Close() error {
 	return r.client.Close()
 }
+
+// Ping checks Redis connectivity
+func (r *RedisClient) Ping(ctx context.Context) error {
+	return r.client.Ping(ctx).Err()
+}

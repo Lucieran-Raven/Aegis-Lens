@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 )
 
 // ScoringEngine evaluates telemetry signals and outputs verdicts

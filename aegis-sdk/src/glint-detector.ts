@@ -92,7 +92,7 @@ export class GlintDetector {
     const luminanceCorrelation = this.calculateLuminanceCorrelation();
 
     // Determine if live (real human eyes)
-    const isLive = this.isLiveGaze(microsaccadeRate, glintParallaxVariance, luminanceCorrelation);
+    const isLive = this.isLiveGaze(microsaccadeRate, glintParallaxVariance);
 
     return {
       microsaccadeRate,
@@ -228,8 +228,7 @@ export class GlintDetector {
    */
   private isLiveGaze(
     microsaccadeRate: number,
-    glintParallaxVariance: number,
-    _luminanceCorrelation: number
+    glintParallaxVariance: number
   ): boolean {
     // Live eyes should have:
     // - Microsaccade rate between 0.5 and 5 Hz

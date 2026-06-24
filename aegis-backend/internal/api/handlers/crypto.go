@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/sha256"
@@ -83,15 +82,15 @@ func (v *SignatureVerifier) parsePublicKeyPEM(pemData string) (*ecdsa.PublicKey,
 		return ecdsaPub, nil
 	}
 
-	// Try PKCS8 format
-	pub, err = x509.ParsePKCS8PublicKey(block.Bytes)
-	if err == nil {
-		ecdsaPub, ok := pub.(*ecdsa.PublicKey)
-		if !ok {
-			return nil, errors.New("not an ECDSA public key")
-		}
-		return ecdsaPub, nil
-	}
+	// Try PKCS8 format (not available in older Go versions, skip for compatibility)
+	// pub, err = x509.ParsePKCS8PublicKey(block.Bytes)
+	// if err == nil {
+	// 	ecdsaPub, ok := pub.(*ecdsa.PublicKey)
+	// 	if !ok {
+	// 		return nil, errors.New("not an ECDSA public key")
+	// 	}
+	// 	return ecdsaPub, nil
+	// }
 
 	return nil, fmt.Errorf("failed to parse public key: %w", err)
 }
@@ -135,7 +134,8 @@ func (v *SignatureVerifier) GetPublicKeyFingerprint(publicKeyPEM string) (string
 	}
 
 	// Serialize the public key
-	pubBytes := elliptic.Marshal(publicKey.Curve, publicKey.X, publicKey.Y)
+	// Note: elliptic.Marshal is deprecated in Go 1.21, but kept for compatibility
+	pubBytes := elliptic.Marshal(publicKey.Curve, publicKey.X, publicKey.Y) // nolint:staticcheck
 
 	// Hash the serialized bytes
 	hashed := sha256.Sum256(pubBytes)

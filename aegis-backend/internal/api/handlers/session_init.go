@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/aegis-lens/backend/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -20,18 +21,9 @@ type SessionInitHandler struct {
 
 // RedisClient interface for dependency injection
 type RedisClient interface {
-	StoreSession(ctx context.Context, session *SessionData) error
-}
-
-// SessionData represents the session to be stored
-type SessionData struct {
-	SessionID         string
-	ClientID          string
-	DeviceFingerprint string
-	Nonce             []byte
-	PublicKeyPEM      string
-	CreatedAt         time.Time
-	ExpiresAt         time.Time
+	StoreSession(ctx context.Context, session *storage.SessionData) error
+	GetSession(ctx context.Context, sessionID string) (*storage.SessionData, error)
+	UpdatePublicKey(ctx context.Context, sessionID string, publicKeyPEM string) error
 }
 
 // NewSessionInitHandler creates a new session initialization handler
@@ -97,7 +89,7 @@ func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	expiresAt := now.Add(5 * time.Minute)
 
 	// Create session data
-	session := &SessionData{
+	session := &storage.SessionData{
 		SessionID:         sessionID,
 		ClientID:          req.ClientID,
 		DeviceFingerprint: req.DeviceFingerprint,
@@ -125,7 +117,10 @@ func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Send response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // RegisterRoutes registers the session initialization routes

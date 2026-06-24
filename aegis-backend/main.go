@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"crypto/tls"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -51,9 +50,6 @@ func main() {
 
 	// Initialize signature verifier
 	signatureVerifier := handlers.NewSignatureVerifier()
-
-	// Initialize scoring engine
-	scoringEngine := handlers.NewScoringEngine(handlers.DefaultThresholds())
 
 	// Initialize handlers
 	sessionInitHandler := handlers.NewSessionInitHandler(redisClient)
@@ -107,7 +103,6 @@ func main() {
 	// Rate Limiting Middleware (C4 FIX - 100 req/min per IP, burst 20)
 	// Uses sync.Map to store per-IP limiters for distributed rate limiting
 	var ipLimiters sync.Map
-	var limiterMutex sync.Mutex
 
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -175,23 +170,23 @@ func main() {
 		// Check Redis connectivity
 		redisCtx, redisCancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer redisCancel()
-		if err := redisClient.Ping(redisCtx).Err(); err != nil {
+		if err := redisClient.Ping(redisCtx); err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte(`{"status":"error","service":"redis","message":"redis unavailable"}`))
+			_, _ = w.Write([]byte(`{"status":"error","service":"redis","message":"redis unavailable"}`))
 			return
 		}
 		
 		// Check TimescaleDB connectivity
 		dbCtx, dbCancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer dbCancel()
-		if err := timescaleClient.Ping(dbCtx).Err(); err != nil {
+		if err := timescaleClient.Ping(dbCtx); err != nil {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			w.Write([]byte(`{"status":"error","service":"database","message":"database unavailable"}`))
+			_, _ = w.Write([]byte(`{"status":"error","service":"database","message":"database unavailable"}`))
 			return
 		}
 		
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"ok","service":"aegis-backend"}`))
+		_, _ = w.Write([]byte(`{"status":"ok","service":"aegis-backend"}`))
 	})
 
 	// Register API routes

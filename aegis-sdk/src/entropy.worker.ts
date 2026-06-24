@@ -8,7 +8,6 @@
 let sharedBuffer: SharedArrayBuffer | null = null;
 let int32View: Int32Array | null = null;
 let float64View: Float64Array | null = null;
-let wasmModule: any = null;
 
 // Ring buffer indices
 let HEAD_INDEX = 0;
@@ -57,7 +56,7 @@ async function initialize(
       const response = await fetch(wasmUrl);
       const wasmBytes = await response.arrayBuffer();
       const wasmModule = await WebAssembly.instantiate(wasmBytes);
-      // @ts-ignore
+      // @ts-expect-error - WASM module exports are dynamic
       self.wasmModule = wasmModule.instance.exports;
     } catch (error) {
       console.error('Failed to load WASM module:', error);
@@ -108,6 +107,7 @@ function analyze(): void {
 
   // Process deltas with WASM or fallback to JS
   let result;
+  // @ts-expect-error - WASM module is dynamically loaded
   if (self.wasmModule) {
     result = analyzeWithWasm(deltas);
   } else {
@@ -124,9 +124,9 @@ function analyze(): void {
 /**
  * Analyze deltas using Rust WASM module
  */
-function analyzeWithWasm(deltas: number[]): any {
+function analyzeWithWasm(deltas: number[]): Record<string, unknown> {
   try {
-    // @ts-ignore
+    // @ts-expect-error - WASM module exports are dynamic
     const { analyze_frame_deltas, is_virtual_camera, get_confidence_score } = self.wasmModule;
 
     const wasmResult = analyze_frame_deltas(deltas);
@@ -151,7 +151,7 @@ function analyzeWithWasm(deltas: number[]): any {
 /**
  * Fallback JavaScript analysis (simplified)
  */
-function analyzeWithJS(deltas: number[]): any {
+function analyzeWithJS(deltas: number[]): Record<string, unknown> {
   const variance = calculateVariance(deltas);
   const stdDev = Math.sqrt(variance);
   const klDivergence = calculateKLDivergence(deltas);

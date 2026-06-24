@@ -1,14 +1,7 @@
 package handlers
 
 import (
-	"context"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/sha256"
-	"crypto/x509"
-	"encoding/base64"
 	"encoding/json"
-	"encoding/pem"
 	"fmt"
 	"math"
 	"net/http"
@@ -21,16 +14,11 @@ import (
 // Features strict 30s clock-skew defenses and signature verification
 type SessionVerifyHandler struct {
 	redisClient RedisClient
-	verifier    SignatureVerifier
-}
-
-// SignatureVerifier interface for dependency injection
-type SignatureVerifier interface {
-	VerifySignature(publicKeyPEM string, signature []byte, payload []byte) (bool, error)
+	verifier    *SignatureVerifier
 }
 
 // NewSessionVerifyHandler creates a new session verification handler
-func NewSessionVerifyHandler(redisClient RedisClient, verifier SignatureVerifier) *SessionVerifyHandler {
+func NewSessionVerifyHandler(redisClient RedisClient, verifier *SignatureVerifier) *SessionVerifyHandler {
 	return &SessionVerifyHandler{
 		redisClient: redisClient,
 		verifier:    verifier,
@@ -292,7 +280,10 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	// Send response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(resp)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }
 
 // scoreTelemetry evaluates the telemetry and returns a verdict

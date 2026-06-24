@@ -4,6 +4,8 @@
  * Passes frame delta arrays to Web Worker for WASM processing
  */
 
+import { EntropyResult } from './index';
+
 export interface WorkerBridgeConfig {
   bufferSize?: number; // Size of SharedArrayBuffer in bytes (default: 65536)
   ringSize?: number; // Number of slots in ring buffer (default: 256)
@@ -15,7 +17,7 @@ export class WorkerBridge {
   private int32View: Int32Array | null = null;
   private worker: Worker | null = null;
   private isInitialized: boolean = false;
-  private onResultCallback: ((result: any) => void) | null = null;
+  private onResultCallback: ((result: EntropyResult) => void) | null = null;
 
   // Ring buffer indices (stored in first 4 Int32 slots)
   private readonly HEAD_INDEX = 0;
@@ -90,7 +92,7 @@ export class WorkerBridge {
   /**
    * Set callback for processing results from worker
    */
-  onResult(callback: (result: any) => void): void {
+  onResult(callback: (result: EntropyResult) => void): void {
     this.onResultCallback = callback;
   }
 
@@ -153,11 +155,9 @@ export class WorkerBridge {
     }
 
     // Write data to buffer (slot is now reserved)
-    let writePos = (this.DATA_START + reservedTail * 2) % (this.int32View.length - this.DATA_START);
     
     // Write length first
     this.int32View[this.DATA_START + reservedTail * 2] = deltas.length;
-    writePos = (writePos + 1) % (this.int32View.length - this.DATA_START);
 
     // Write deltas as Float64 (using two Int32 slots per double)
     const float64View = new Float64Array(this.sharedBuffer!);

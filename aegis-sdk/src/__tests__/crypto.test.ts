@@ -6,10 +6,8 @@
 import { AegisCrypto } from '../crypto';
 
 describe('AegisCrypto', () => {
-  let crypto: AegisCrypto;
-
   beforeEach(() => {
-    crypto = new AegisCrypto();
+    // Setup
   });
 
   describe('generateKeyPair', () => {

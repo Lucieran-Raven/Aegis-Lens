@@ -70,7 +70,7 @@ export class FrameCollector {
 
     // Use requestVideoFrameCallback for hardware-level timing
     if ('requestVideoFrameCallback' in this.videoElement) {
-      (this.videoElement as any).requestVideoFrameCallback(
+      (this.videoElement as HTMLVideoElement & { requestVideoFrameCallback: (cb: (now: number, metadata: Record<string, unknown>) => void) => void }).requestVideoFrameCallback(
         this.handleVideoFrameCallback.bind(this)
       );
     } else {
@@ -86,14 +86,16 @@ export class FrameCollector {
    */
   private handleVideoFrameCallback(
     _now: number,
-    metadata: any
+    metadata: Record<string, unknown>
   ): void {
     if (!this.isCollecting) {
       return;
     }
 
     // Use presentationTime for hardware delivery time (in microseconds)
-    const timestamp = (metadata.presentationTime || metadata.mediaTime || performance.now()) * 1000; // Convert to microseconds
+    const presentationTime = metadata.presentationTime as number | undefined;
+    const mediaTime = metadata.mediaTime as number | undefined;
+    const timestamp = (presentationTime || mediaTime || performance.now()) * 1000; // Convert to microseconds
     const frameIndex = this.frameTimings.length;
 
     this.frameTimings.push({ timestamp, frameIndex });
