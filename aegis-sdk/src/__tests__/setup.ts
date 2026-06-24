@@ -13,11 +13,12 @@ global.AudioContext = class MockAudioContext {
   state: string;
 
   createBuffer(numberOfChannels: number, length: number, sampleRate: number): AudioBuffer {
+    // @ts-expect-error - Mock AudioBuffer for testing
     return {
       numberOfChannels,
       length,
       sampleRate,
-      getChannelData: (channel: number) => new Float32Array(length),
+      getChannelData: () => new Float32Array(length),
       duration: length / sampleRate,
     } as AudioBuffer;
   }
@@ -58,7 +59,7 @@ global.AudioContext = class MockAudioContext {
 } as unknown as typeof AudioContext;
 
 // Mock webkitAudioContext for Safari compatibility
-(global as any).webkitAudioContext = global.AudioContext;
+(global as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext = global.AudioContext;
 
 // Mock performance.now()
 global.performance = {
@@ -66,13 +67,14 @@ global.performance = {
 } as Performance;
 
 // Mock requestVideoFrameCallback
-HTMLVideoElement.prototype.requestVideoFrameCallback = function(callback: any) {
+// @ts-expect-error - requestVideoFrameCallback is browser-specific
+HTMLVideoElement.prototype.requestVideoFrameCallback = function(callback: (now: number, metadata: Record<string, unknown>) => void) {
   setTimeout(() => {
     callback(performance.now(), {
       presentationTime: performance.now() / 1000,
       mediaTime: performance.now() / 1000,
       width: this.videoWidth,
       height: this.videoHeight,
-    });
+    } as Record<string, unknown>);
   }, 16);
 };
