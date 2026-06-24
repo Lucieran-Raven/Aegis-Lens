@@ -1,0 +1,15 @@
+linters:
+  disable:
+    - typecheck
+    - unused
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+
+linters-settings:
+  errcheck:
+    check-type-assertions: true
+    check-blank: true
