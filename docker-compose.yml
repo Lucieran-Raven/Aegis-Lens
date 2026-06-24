@@ -1,0 +1,107 @@
+# Aegis Lens v2.0 - Docker Compose Configuration
+# Orchestrates all services for development and production
+
+version: '3.8'
+
+services:
+  # Redis cache for session management
+  redis:
+    image: redis:7-alpine
+    container_name: aegis-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    networks:
+      - aegis-network
+
+  # TimescaleDB for time-series data storage
+  timescaledb:
+    image: timescale/timescaledb:latest-pg15
+    container_name: aegis-timescaledb
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: aegis
+      POSTGRES_USER: aegis_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aegis_secure_password}
+      TS_TUNE_MEMORY: 2GB
+      TS_TUNE_MAX_CONCURRENCY: 4
+    volumes:
+      - timescaledb_data:/var/lib/postgresql/data
+      - ./aegis-backend/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis_user -d aegis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aegis-network
+
+  # Aegis Backend API
+  backend:
+    build:
+      context: ./aegis-backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: aegis-backend
+    ports:
+      - "8080:8080"
+    environment:
+      GIN_MODE: release
+      PORT: 8080
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      POSTGRES_HOST: timescaledb
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: aegis
+      POSTGRES_USER: aegis_user
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aegis_secure_password}
+      LOG_LEVEL: info
+    depends_on:
+      redis:
+        condition: service_healthy
+      timescaledb:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # Nginx reverse proxy (optional, for production)
+  nginx:
+    image: nginx:alpine
+    container_name: aegis-nginx
+    ports:
+      - "443:443"
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - backend
+    networks:
+      - aegis-network
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  redis_data:
+    driver: local
+  timescaledb_data:
+    driver: local
+
+networks:
+  aegis-network:
+    driver: bridge

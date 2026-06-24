@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package aegis.v2;
+
+option go_package = "github.com/aegis-lens/backend/proto/aegis/v2;aegisv2";
+
+// SessionInitRequest - Client requests session initialization
+message SessionInitRequest {
+  string client_id = 1;
+  string device_fingerprint = 2;
+  string user_agent = 3;
+  int64 timestamp = 4;
+}
+
+// SessionInitResponse - Server responds with cryptographic nonce and session ID
+message SessionInitResponse {
+  string session_id = 1;
+  bytes nonce = 2; // 4-byte random nonce for anti-replay
+  int64 server_timestamp = 5;
+  int32 ttl_seconds = 6;
+}
+
+// TelemetryPayload - Core forensic telemetry data (zero-PII)
+message TelemetryPayload {
+  string session_id = 1;
+  int64 client_timestamp = 2;
+  
+  // Signal A: Camera timing entropy
+  CameraTimingSignal camera_timing = 3;
+  
+  // Signal B: Acoustic Time-of-Flight
+  AcousticSignal acoustic = 4;
+  
+  // Signal C: Eye tracking / PCCR
+  EyeTrackingSignal eye_tracking = 5;
+  
+  // Signal D: Lip-sync drift (proxy detection)
+  LipSyncSignal lip_sync = 6;
+}
+
+message CameraTimingSignal {
+  double variance = 1;
+  double std_dev = 2;
+  double kl_divergence = 3;
+  double shapiro_wilk_w = 4;
+  int32 sample_count = 5;
+  repeated double frame_deltas = 6; // Raw deltas for server-side re-analysis
+}
+
+message AcousticSignal {
+  double time_of_flight_ms = 1;
+  double correlation_peak = 2;
+  double spectral_entropy = 3;
+  bool phase_signature_valid = 4;
+  int32 sample_count = 5;
+}
+
+message EyeTrackingSignal {
+  double microsaccade_rate = 1;
+  double glint_parallax_variance = 2;
+  double luminance_correlation = 3;
+  int32 gaze_samples = 4;
+}
+
+message LipSyncSignal {
+  double audio_video_drift_ms = 1;
+  double lip_velocity_correlation = 2;
+  bool multi_person_detected = 3;
+  int32 sync_samples = 4;
+}
+
+// SessionVerifyRequest - Client submits signed telemetry for verification
+message SessionVerifyRequest {
+  TelemetryPayload telemetry = 1;
+  bytes signature = 2; // ECDSA P-256 signature
+  string public_key_pem = 3; // Client ephemeral public key
+}
+
+// SessionVerifyResponse - Server verdict
+message SessionVerifyResponse {
+  string session_id = 1;
+  Verdict verdict = 2;
+  double confidence_score = 3;
+  repeated string signal_flags = 4;
+  int64 server_timestamp = 5;
+}
+
+enum Verdict {
+  VERDICT_UNKNOWN = 0;
+  VERDICT_CLEAR = 1;
+  VERDICT_SUSPICIOUS = 2;
+  VERDICT_BLOCKED = 3;
+}
