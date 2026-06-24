@@ -16,7 +16,7 @@ RUN npm ci --only=production && \
 # Copy source code
 COPY tsconfig.json rollup.config.js ./
 COPY src ./src
-COPY proto ./proto
+# COPY proto ./proto # Proto directory is empty, skip for now
 
 # Build TypeScript SDK
 RUN npm run build
@@ -63,7 +63,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY tsconfig.json rollup.config.js ./
 COPY src ./src
-COPY proto ./proto
+# COPY proto ./proto # Proto directory is empty, skip for now
 
 # Install all dependencies including dev dependencies
 RUN npm install
