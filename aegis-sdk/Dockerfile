@@ -9,8 +9,8 @@ WORKDIR /build
 # Copy package files
 COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm ci --only=production && \
+# Install all dependencies (including dev dependencies for build)
+RUN npm ci && \
     npm cache clean --force
 
 # Copy source code
