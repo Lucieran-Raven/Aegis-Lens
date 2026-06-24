@@ -40,7 +40,11 @@ const webCryptoMock = {
 
 // Assign to both global and window for compatibility
 global.crypto = webCryptoMock;
-(global as any).window = { crypto: webCryptoMock };
+// Use Object.defineProperty to properly override jsdom's window.crypto
+Object.defineProperty(global, 'window', {
+  value: { crypto: webCryptoMock },
+  writable: true,
+});
 
 // Mock AudioContext for tests that don't require real audio processing
 global.AudioContext = class MockAudioContext {
