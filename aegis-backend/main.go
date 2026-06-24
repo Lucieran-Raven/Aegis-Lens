@@ -5,9 +5,11 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -102,14 +104,28 @@ func main() {
 		})
 	})
 
-	// Rate Limiting Middleware (C4 FIX - 100 req/min, burst 20)
-	limiter := rate.NewLimiter(rate.Limit(100.0), 20)
+	// Rate Limiting Middleware (C4 FIX - 100 req/min per IP, burst 20)
+	// Uses sync.Map to store per-IP limiters for distributed rate limiting
+	var ipLimiters sync.Map
+	var limiterMutex sync.Mutex
+
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Extract IP address
+			ip, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				ip = r.RemoteAddr
+			}
+
+			// Get or create limiter for this IP
+			limiterIface, _ := ipLimiters.LoadOrStore(ip, rate.NewLimiter(rate.Limit(100.0), 20))
+			limiter := limiterIface.(*rate.Limiter)
+
 			if !limiter.Allow() {
 				http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
 				return
 			}
+
 			next.ServeHTTP(w, r)
 		})
 	})
@@ -118,6 +134,21 @@ func main() {
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB max
+			next.ServeHTTP(w, r)
+		})
+	})
+
+	// Content-Type Validation Middleware
+	// Requires application/json for POST endpoints to prevent content-type confusion attacks
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodPost {
+				contentType := r.Header.Get("Content-Type")
+				if contentType != "application/json" {
+					http.Error(w, "Content-Type must be application/json", http.StatusUnsupportedMediaType)
+					return
+				}
+			}
 			next.ServeHTTP(w, r)
 		})
 	})

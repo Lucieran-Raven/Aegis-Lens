@@ -223,7 +223,9 @@ export class AegisLens {
 
   private handleEntropyResult(result: EntropyResult): void {
     // Store result for later retrieval
-    console.log('Entropy analysis result:', result);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Entropy analysis result:', result);
+    }
   }
 
   private generateClientId(): string {

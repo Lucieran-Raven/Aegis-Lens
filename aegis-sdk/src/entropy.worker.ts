@@ -161,8 +161,8 @@ function analyzeWithJS(deltas: number[]): any {
   const isVirtualCamera = variance < 12.0;
 
   // Confidence score
-  const varianceScore = variance >= 50.0 && variance <= 500.0 ? 1.0 - ((variance - 275.0) / 225.0).abs().min(1.0) : variance < 12.0 ? 0.0 : 0.5;
-  const klScore = (1.0 - klDivergence.min(1.0)).max(0.0);
+  const varianceScore = variance >= 50.0 && variance <= 500.0 ? 1.0 - Math.min(Math.abs((variance - 275.0) / 225.0), 1.0) : variance < 12.0 ? 0.0 : 0.5;
+  const klScore = Math.max(1.0 - Math.min(klDivergence, 1.0), 0.0);
   const shapiroScore = shapiroWilkW;
   const confidenceScore = (varianceScore * 0.4 + klScore * 0.3 + shapiroScore * 0.3) * 100.0;
 
@@ -207,7 +207,7 @@ function calculateKLDivergence(samples: number[]): number {
   const bins = 20;
   const histogram = new Array(bins).fill(0);
   const max = Math.max(...samples);
-  const binWidth = (max / bins).max(1.0);
+  const binWidth = Math.max(max / bins, 1.0);
 
   for (const sample of samples) {
     const bin = Math.min(Math.floor(sample / binWidth), bins - 1);
@@ -224,7 +224,7 @@ function calculateKLDivergence(samples: number[]): number {
   let kl = 0.0;
   const epsilon = 1e-10;
   for (let i = 0; i < bins; i++) {
-    const p = histogram[i].max(epsilon);
+    const p = Math.max(histogram[i], epsilon);
     const q = 1.0 / bins;
     kl += p * Math.log(p / q);
   }
@@ -249,29 +249,9 @@ function calculateShapiroWilk(samples: number[]): number {
   const skewness = sorted.reduce((sum, x) => sum + ((x - mean) / Math.sqrt(ss)) ** 3, 0) / n;
   const kurtosis = sorted.reduce((sum, x) => sum + ((x - mean) / Math.sqrt(ss)) ** 4, 0) / n - 3.0;
 
-  const skewScore = (1.0 - skewness.abs().min(1.0)).max(0.0);
-  const kurtScore = (1.0 - kurtosis.abs().min(1.0)).max(0.0);
+  const skewScore = Math.max(1.0 - Math.min(Math.abs(skewness), 1.0), 0.0);
+  const kurtScore = Math.max(1.0 - Math.min(Math.abs(kurtosis), 1.0), 0.0);
 
   return (skewScore * 0.5 + kurtScore * 0.5);
 }
 
-// Extend Number prototype for convenience
-declare global {
-  interface Number {
-    min(other: number): number;
-    max(other: number): number;
-    abs(): number;
-  }
-}
-
-Number.prototype.min = function(this: number, other: number): number {
-  return Math.min(this, other);
-};
-
-Number.prototype.max = function(this: number, other: number): number {
-  return Math.max(this, other);
-};
-
-Number.prototype.abs = function(this: number): number {
-  return Math.abs(this);
-};
