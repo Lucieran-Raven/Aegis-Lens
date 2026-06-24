@@ -9,7 +9,7 @@
 vendor
 
 # Go modules
-go.sum
+# go.sum - needed for Docker build
 
 # IDE
 .vscode
