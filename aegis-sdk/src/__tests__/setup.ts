@@ -2,6 +2,39 @@
  * Jest setup file for mocking browser APIs in CI environment
  */
 
+// Mock WebCrypto API for tests
+global.crypto = {
+  subtle: {
+    generateKey: async (algorithm: any, extractable: boolean, keyUsages: string[]) => {
+      return {
+        publicKey: { type: 'public', extractable: true },
+        privateKey: { type: 'private', extractable: false },
+      } as CryptoKeyPair;
+    },
+    exportKey: async (format: string, key: any) => {
+      return new ArrayBuffer(32);
+    },
+    importKey: async (format: string, keyData: any, algorithm: any, extractable: boolean, keyUsages: string[]) => {
+      return { type: 'public', extractable } as CryptoKey;
+    },
+    sign: async (algorithm: any, privateKey: any, data: ArrayBuffer) => {
+      return new ArrayBuffer(64);
+    },
+    verify: async (algorithm: any, publicKey: any, signature: ArrayBuffer, data: ArrayBuffer) => {
+      return true;
+    },
+    digest: async (algorithm: any, data: ArrayBuffer) => {
+      return new ArrayBuffer(32);
+    },
+  },
+  getRandomValues: (array: any) => {
+    for (let i = 0; i < array.length; i++) {
+      array[i] = Math.floor(Math.random() * 256);
+    }
+    return array;
+  },
+} as Crypto;
+
 // Mock AudioContext for tests that don't require real audio processing
 global.AudioContext = class MockAudioContext {
   constructor(options?: { sampleRate?: number }) {
