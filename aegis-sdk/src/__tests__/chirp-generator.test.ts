@@ -14,7 +14,13 @@ describe('ChirpGenerator', () => {
 
   describe('generateChirp', () => {
     it('should generate a chirp with valid audio buffer', async () => {
-      const result = await generator.generateChirp(0);
+      const result = generator.generateChirp({
+        startFreq: 200,
+        endFreq: 8000,
+        duration: 0.08,
+        sampleRate: 48000,
+        nonce: 0,
+      });
 
       expect(result).toBeDefined();
       expect(result.audioBuffer).toBeDefined();
@@ -24,20 +30,44 @@ describe('ChirpGenerator', () => {
 
     it('should generate chirp with correct duration', async () => {
       const duration = 0.08; // 80ms
-      const result = await generator.generateChirp(0);
+      const result = generator.generateChirp({
+        startFreq: 200,
+        endFreq: 8000,
+        duration: 0.08,
+        sampleRate: 48000,
+        nonce: 0,
+      });
 
       expect(result.audioBuffer.duration).toBeCloseTo(duration, 2);
     });
 
     it('should generate different phase offsets for different nonces', async () => {
-      const result1 = await generator.generateChirp(123);
-      const result2 = await generator.generateChirp(456);
+      const result1 = generator.generateChirp({
+        startFreq: 200,
+        endFreq: 8000,
+        duration: 0.08,
+        sampleRate: 48000,
+        nonce: 123,
+      });
+      const result2 = generator.generateChirp({
+        startFreq: 200,
+        endFreq: 8000,
+        duration: 0.08,
+        sampleRate: 48000,
+        nonce: 456,
+      });
 
       expect(result1.phaseOffset).not.toBe(result2.phaseOffset);
     });
 
     it('should generate chirp with correct sample rate', async () => {
-      const result = await generator.generateChirp(0);
+      const result = generator.generateChirp({
+        startFreq: 200,
+        endFreq: 8000,
+        duration: 0.08,
+        sampleRate: 48000,
+        nonce: 0,
+      });
 
       expect(result.audioBuffer.sampleRate).toBe(48000);
     });
@@ -45,9 +75,15 @@ describe('ChirpGenerator', () => {
 
   describe('playChirp', () => {
     it('should play a chirp successfully', async () => {
-      const result = await generator.generateChirp(0);
+      const result = generator.generateChirp({
+        startFreq: 200,
+        endFreq: 8000,
+        duration: 0.08,
+        sampleRate: 48000,
+        nonce: 0,
+      });
 
-      await expect(generator.playChirp(result.audioBuffer)).resolves.not.toThrow();
+      await expect(generator.playChirp(result)).resolves.not.toThrow();
     });
   });
 
