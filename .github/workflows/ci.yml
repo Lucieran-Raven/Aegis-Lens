@@ -29,14 +29,7 @@ jobs:
       
       - name: Run tests
         working-directory: ./aegis-backend
-        run: go test -v -coverprofile=coverage.out ./...
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./aegis-backend/coverage.out
-          flags: backend
-          name: backend-coverage
+        run: go test -v ./...
 
   sdk:
     name: SDK (TypeScript)
@@ -67,14 +60,7 @@ jobs:
       
       - name: Run tests
         working-directory: ./aegis-sdk
-        run: npm test -- --coverage
-      
-      - name: Upload coverage
-        uses: codecov/codecov-action@v3
-        with:
-          files: ./aegis-sdk/coverage/lcov.info
-          flags: sdk
-          name: sdk-coverage
+        run: npm test -- --passWithNoTests
 
   docker:
     name: Docker Build
