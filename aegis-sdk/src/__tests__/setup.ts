@@ -13,22 +13,42 @@ global.AudioContext = class MockAudioContext {
   state: string;
 
   createBuffer(numberOfChannels: number, length: number, sampleRate: number): AudioBuffer {
-    // @ts-expect-error - Mock AudioBuffer for testing
+    const channels: Float32Array[] = [];
+    for (let i = 0; i < numberOfChannels; i++) {
+      channels.push(new Float32Array(length));
+    }
     return {
       numberOfChannels,
       length,
       sampleRate,
-      getChannelData: () => new Float32Array(length),
+      getChannelData: (channel: number) => channels[channel],
+      copyToChannel: (source: Float32Array, channel: number) => {
+        if (channels[channel]) {
+          channels[channel].set(source);
+        }
+      },
+      copyFromChannel: (destination: Float32Array, channel: number) => {
+        if (channels[channel]) {
+          destination.set(channels[channel]);
+        }
+      },
       duration: length / sampleRate,
     } as AudioBuffer;
   }
 
   createBufferSource(): AudioBufferSourceNode {
+    let onended: (() => void) | null = null;
     return {
       buffer: null,
-      connect: () => {},
-      start: () => {},
+      connect: () => this,
+      start: () => {
+        // Simulate audio ending immediately in mock
+        setTimeout(() => onended?.(), 0);
+      },
       stop: () => {},
+      set onended(fn: () => void) {
+        onended = fn;
+      },
     } as unknown as AudioBufferSourceNode;
   }
 
