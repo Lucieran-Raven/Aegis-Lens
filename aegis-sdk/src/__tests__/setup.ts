@@ -5,7 +5,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 // Mock WebCrypto API for tests
-global.crypto = {
+const webCryptoMock = {
   subtle: {
     generateKey: async (_algorithm: unknown, _extractable: boolean, _keyUsages: string[]) => {
       return {
@@ -37,6 +37,10 @@ global.crypto = {
     return typedArray;
   },
 } as Crypto;
+
+// Assign to both global and window for compatibility
+global.crypto = webCryptoMock;
+(global as any).window = { crypto: webCryptoMock };
 
 // Mock AudioContext for tests that don't require real audio processing
 global.AudioContext = class MockAudioContext {
