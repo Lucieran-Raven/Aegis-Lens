@@ -29,6 +29,7 @@ WORKDIR /app
 # Copy built artifacts from builder
 COPY --from=builder /build/dist ./dist
 COPY --from=builder /build/package.json ./
+COPY --from=builder /build/package-lock.json ./
 
 # Install only runtime dependencies
 RUN npm ci --only=production && \
