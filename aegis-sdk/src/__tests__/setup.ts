@@ -2,36 +2,39 @@
  * Jest setup file for mocking browser APIs in CI environment
  */
 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 // Mock WebCrypto API for tests
 global.crypto = {
   subtle: {
-    generateKey: async (algorithm: any, extractable: boolean, keyUsages: string[]) => {
+    generateKey: async (_algorithm: unknown, _extractable: boolean, _keyUsages: string[]) => {
       return {
         publicKey: { type: 'public', extractable: true },
         privateKey: { type: 'private', extractable: false },
       } as CryptoKeyPair;
     },
-    exportKey: async (format: string, key: any) => {
+    exportKey: async (_format: string, _key: unknown) => {
       return new ArrayBuffer(32);
     },
-    importKey: async (format: string, keyData: any, algorithm: any, extractable: boolean, keyUsages: string[]) => {
+    importKey: async (_format: string, _keyData: unknown, _algorithm: unknown, extractable: boolean, _keyUsages: string[]) => {
       return { type: 'public', extractable } as CryptoKey;
     },
-    sign: async (algorithm: any, privateKey: any, data: ArrayBuffer) => {
+    sign: async (_algorithm: unknown, _privateKey: unknown, _data: ArrayBuffer) => {
       return new ArrayBuffer(64);
     },
-    verify: async (algorithm: any, publicKey: any, signature: ArrayBuffer, data: ArrayBuffer) => {
+    verify: async (_algorithm: unknown, _publicKey: unknown, _signature: ArrayBuffer, _data: ArrayBuffer) => {
       return true;
     },
-    digest: async (algorithm: any, data: ArrayBuffer) => {
+    digest: async (_algorithm: unknown, _data: ArrayBuffer) => {
       return new ArrayBuffer(32);
     },
   },
-  getRandomValues: (array: any) => {
-    for (let i = 0; i < array.length; i++) {
-      array[i] = Math.floor(Math.random() * 256);
+  getRandomValues: (array: unknown) => {
+    const typedArray = array as Uint8Array;
+    for (let i = 0; i < typedArray.length; i++) {
+      typedArray[i] = Math.floor(Math.random() * 256);
     }
-    return array;
+    return typedArray;
   },
 } as Crypto;
 
