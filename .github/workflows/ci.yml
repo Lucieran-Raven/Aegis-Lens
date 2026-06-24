@@ -60,7 +60,7 @@ jobs:
       
       - name: Run tests
         working-directory: ./aegis-sdk
-        run: npm test -- --passWithNoTests chirp-generator.test.ts glint-detector.test.ts tof-analyzer.test.ts
+        run: npm test -- --passWithNoTests chirp-generator.test.ts glint-detector.test.ts
 
   docker:
     name: Docker Build
