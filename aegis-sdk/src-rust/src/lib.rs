@@ -81,8 +81,9 @@ pub fn analyze_frame_deltas(deltas: &[f64]) -> Result<JsValue, JsValue> {
         sample_count: deltas.len(),
     };
 
-    JsValue::from_serde(&result)
-        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))
+    let json = serde_json::to_string(&result)
+        .map_err(|e| JsValue::from_str(&format!("Serialization error: {}", e)))?;
+    Ok(JsValue::from_str(&json))
 }
 
 #[wasm_bindgen]
