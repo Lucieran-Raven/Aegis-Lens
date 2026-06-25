@@ -63,7 +63,7 @@ export class AegisLens {
     }
 
     const clientId = this.generateClientId();
-    const deviceFingerprint = this.generateDeviceFingerprint();
+    const deviceFingerprint = await this.generateDeviceFingerprint();
 
     const sessionInit = await this.apiClient.initSession({
       clientId,
@@ -173,19 +173,17 @@ export class AegisLens {
     });
   }
 
-  private handleEntropyResult(result: EntropyResult): void {
-    // Store result for later retrieval
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Entropy analysis result:', result);
-    }
+  private handleEntropyResult(_result: EntropyResult): void {
   }
 
   private generateClientId(): string {
-    return `client_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const randomBytes = new Uint8Array(4);
+    window.crypto.getRandomValues(randomBytes);
+    const randomHex = Array.from(randomBytes).map(b => b.toString(16).padStart(2, '0')).join('');
+    return `client_${Date.now()}_${randomHex}`;
   }
 
-  private generateDeviceFingerprint(): string {
-    // Simple fingerprint based on available browser features
+  private async generateDeviceFingerprint(): Promise<string> {
     const features = [
       navigator.userAgent,
       navigator.language,
@@ -193,7 +191,13 @@ export class AegisLens {
       screen.height,
       navigator.hardwareConcurrency || 0,
     ];
-    return btoa(features.join('|'));
+    const featureString = features.join('|');
+    const encoder = new TextEncoder();
+    const data = encoder.encode(featureString);
+    const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+    return hashHex.substring(0, 32);
   }
 }
 

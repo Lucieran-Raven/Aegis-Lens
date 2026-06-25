@@ -49,7 +49,7 @@ if (typeof window !== 'undefined') {
   });
 } else {
   // Fallback for environments without window
-  (global as any).window = { crypto: webCryptoMock };
+  (global as unknown as { window: { crypto: Crypto } }).window = { crypto: webCryptoMock };
 }
 
 // Mock AudioContext for tests that don't require real audio processing
