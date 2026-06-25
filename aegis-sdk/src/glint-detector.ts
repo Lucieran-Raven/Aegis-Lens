@@ -1,8 +1,3 @@
-/**
- * Aegis Lens v2.0 - Glint Detector
- * Corneal reflection tracking for micro-saccade vector analysis
- * Detects virtual cameras by analyzing eye movement patterns
- */
 
 export interface GazePoint {
   x: number;
@@ -11,9 +6,9 @@ export interface GazePoint {
 }
 
 export interface MicrosaccadeResult {
-  microsaccadeRate: number;      // Hz - saccades per second
-  glintParallaxVariance: number; // Variance in glint parallax
-  luminanceCorrelation: number;  // Correlation with screen luminance
+  microsaccadeRate: number;
+  glintParallaxVariance: number;
+  luminanceCorrelation: number;
   gazeSamples: number;
   isLive: boolean;
 }
@@ -29,26 +24,22 @@ export class GlintDetector {
   private gazeHistory: GazePoint[] = [];
   private luminanceHistory: number[] = [];
   private startTime: number = 0;
-  private readonly MAX_FRAMES = 300; // CRITICAL FIX: Cap at 300 frames (~10 seconds at 30Hz) to prevent memory leaks (P3)
+  private readonly MAX_FRAMES = 300;
 
   constructor(config: Partial<GlintDetectorConfig> = {}) {
     this.config = {
-      sampleRate: 60, // 60 Hz gaze tracking
-      microsaccadeThreshold: 2.0, // degrees per second
-      parallaxThreshold: 0.1, // minimum variance
+      sampleRate: 60,
+      microsaccadeThreshold: 2.0,
+      parallaxThreshold: 0.1,
       ...config,
     };
   }
 
-  /**
-   * Add a gaze point for analysis
-   */
   addGazePoint(x: number, y: number, timestamp: number): void {
     this.gazeHistory.push({ x, y, timestamp });
 
-    // CRITICAL FIX: Enforce circular buffer limit to prevent unbounded growth (P3)
     if (this.gazeHistory.length > this.MAX_FRAMES) {
-      this.gazeHistory.shift(); // Remove oldest frame
+      this.gazeHistory.shift();
     }
 
     if (this.startTime === 0) {
@@ -56,21 +47,14 @@ export class GlintDetector {
     }
   }
 
-  /**
-   * Add luminance reading for correlation analysis
-   */
   addLuminance(luminance: number): void {
     this.luminanceHistory.push(luminance);
 
-    // CRITICAL FIX: Enforce circular buffer limit to prevent unbounded growth (P3)
     if (this.luminanceHistory.length > this.MAX_FRAMES) {
-      this.luminanceHistory.shift(); // Remove oldest frame
+      this.luminanceHistory.shift();
     }
   }
 
-  /**
-   * Analyze gaze data for microsaccades and glint patterns
-   */
   analyze(): MicrosaccadeResult {
     if (this.gazeHistory.length < 10) {
       return {
@@ -82,16 +66,12 @@ export class GlintDetector {
       };
     }
 
-    // Calculate microsaccade rate
     const microsaccadeRate = this.calculateMicrosaccadeRate();
 
-    // Calculate glint parallax variance
     const glintParallaxVariance = this.calculateGlintParallaxVariance();
 
-    // Calculate luminance correlation
     const luminanceCorrelation = this.calculateLuminanceCorrelation();
 
-    // Determine if live (real human eyes)
     const isLive = this.isLiveGaze(microsaccadeRate, glintParallaxVariance);
 
     return {
@@ -103,9 +83,6 @@ export class GlintDetector {
     };
   }
 
-  /**
-   * Calculate microsaccade rate (saccades per second)
-   */
   private calculateMicrosaccadeRate(): number {
     if (this.gazeHistory.length < 2) return 0;
 
@@ -118,7 +95,7 @@ export class GlintDetector {
 
       const dx = curr.x - prev.x;
       const dy = curr.y - prev.y;
-      const dt = (curr.timestamp - prev.timestamp) / 1000; // seconds
+      const dt = (curr.timestamp - prev.timestamp) / 1000;
 
       if (dt > 0) {
         const velocity = Math.sqrt(dx * dx + dy * dy) / dt;
@@ -128,7 +105,6 @@ export class GlintDetector {
       }
     }
 
-    // Calculate duration in seconds
     const duration = (this.gazeHistory[this.gazeHistory.length - 1].timestamp - this.startTime) / 1000;
 
     if (duration > 0) {
@@ -138,14 +114,9 @@ export class GlintDetector {
     return 0;
  }
 
-  /**
-   * Calculate glint parallax variance
-   * Measures the variance in eye position relative to expected patterns
-   */
   private calculateGlintParallaxVariance(): number {
     if (this.gazeHistory.length < 2) return 0;
 
-    // Calculate variance in position
     const meanX = this.gazeHistory.reduce((sum, p) => sum + p.x, 0) / this.gazeHistory.length;
     const meanY = this.gazeHistory.reduce((sum, p) => sum + p.y, 0) / this.gazeHistory.length;
 
@@ -160,23 +131,16 @@ export class GlintDetector {
     varianceX /= this.gazeHistory.length;
     varianceY /= this.gazeHistory.length;
 
-    // Combined variance
     return Math.sqrt(varianceX + varianceY);
   }
 
-  /**
-   * Calculate correlation between gaze and screen luminance
-   * Real eyes show correlation with screen brightness changes
-   */
   private calculateLuminanceCorrelation(): number {
     if (this.gazeHistory.length < 2 || this.luminanceHistory.length < 2) return 0;
 
-    // Align the two arrays
     const minLen = Math.min(this.gazeHistory.length, this.luminanceHistory.length);
     const gazeSubset = this.gazeHistory.slice(-minLen);
     const luminanceSubset = this.luminanceHistory.slice(-minLen);
 
-    // Calculate correlation between gaze velocity and luminance changes
     const gazeVelocities: number[] = [];
     const luminanceChanges: number[] = [];
 
@@ -195,9 +159,6 @@ export class GlintDetector {
     return this.pearsonCorrelation(gazeVelocities, luminanceChanges);
   }
 
-  /**
-   * Pearson correlation coefficient
-   */
   private pearsonCorrelation(x: number[], y: number[]): number {
     if (x.length !== y.length || x.length === 0) return 0;
 
@@ -223,37 +184,23 @@ export class GlintDetector {
     return numerator / denominator;
   }
 
-  /**
-   * Determine if gaze pattern indicates live human eyes
-   */
   private isLiveGaze(
     microsaccadeRate: number,
     glintParallaxVariance: number
   ): boolean {
-    // Live eyes should have:
-    // - Microsaccade rate between 0.5 and 5 Hz
-    // - Glint parallax variance above threshold
-    // - Some correlation with luminance (not required but indicative)
 
     const validMicrosaccades = microsaccadeRate >= 0.5 && microsaccadeRate <= 5.0;
     const validParallax = glintParallaxVariance >= this.config.parallaxThreshold;
 
-    // At least microsaccades and parallax must be valid
     return validMicrosaccades && validParallax;
   }
 
-  /**
-   * Reset the detector state
-   */
   reset(): void {
     this.gazeHistory = [];
     this.luminanceHistory = [];
     this.startTime = 0;
   }
 
-  /**
-   * Get the number of samples collected
-   */
   getSampleCount(): number {
     return this.gazeHistory.length;
   }

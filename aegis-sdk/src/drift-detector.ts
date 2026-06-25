@@ -1,8 +1,3 @@
-/**
- * Aegis Lens v2.0 - Drift Detector
- * Computes cross-modal correlation for voice drift metrics
- * Detects audio-video desynchronization with 150ms ceiling
- */
 
 export interface DriftResult {
   audioVideoDriftMs: number;
@@ -23,48 +18,37 @@ export class DriftDetector {
   private videoTimestamps: number[] = [];
   private audioAmplitudes: number[] = [];
   private lipApertures: number[] = [];
-  private readonly MAX_FRAMES = 300; // CRITICAL FIX: Cap at 300 frames (~10 seconds at 30Hz) to prevent memory leaks (P3)
+  private readonly MAX_FRAMES = 300;
 
   constructor(config: Partial<DriftDetectorConfig> = {}) {
     this.config = {
-      maxDriftMs: 150, // 150ms ceiling
-      sampleRate: 30, // 30 Hz
-      windowSize: 60, // 2 second window
+      maxDriftMs: 150,
+      sampleRate: 30,
+      windowSize: 60,
       ...config,
     };
   }
 
-  /**
-   * Add audio timestamp and amplitude
-   */
   addAudioData(timestamp: number, amplitude: number): void {
     this.audioTimestamps.push(timestamp);
     this.audioAmplitudes.push(amplitude);
 
-    // CRITICAL FIX: Enforce circular buffer limit to prevent unbounded growth (P3)
     if (this.audioTimestamps.length > this.MAX_FRAMES) {
       this.audioTimestamps.shift();
       this.audioAmplitudes.shift();
     }
   }
 
-  /**
-   * Add video timestamp and lip aperture
-   */
   addVideoData(timestamp: number, lipAperture: number): void {
     this.videoTimestamps.push(timestamp);
     this.lipApertures.push(lipAperture);
 
-    // CRITICAL FIX: Enforce circular buffer limit to prevent unbounded growth (P3)
     if (this.videoTimestamps.length > this.MAX_FRAMES) {
       this.videoTimestamps.shift();
       this.lipApertures.shift();
     }
   }
 
-  /**
-   * Analyze drift between audio and video streams
-   */
   analyze(): DriftResult {
     if (this.audioTimestamps.length < 2 || this.videoTimestamps.length < 2) {
       return {
@@ -92,14 +76,9 @@ export class DriftDetector {
     };
   }
 
-  /**
-   * Calculate drift between audio and video timestamps
-   */
   private calculateAudioVideoDrift(): number {
-    // Align the two streams by finding the best correlation
     const minLen = Math.min(this.audioTimestamps.length, this.videoTimestamps.length);
     
-    // Calculate timestamp differences
     const audioDiffs: number[] = [];
     const videoDiffs: number[] = [];
 
@@ -108,7 +87,6 @@ export class DriftDetector {
       videoDiffs.push(this.videoTimestamps[i] - this.videoTimestamps[i - 1]);
     }
 
-    // Find the lag that maximizes correlation between the two streams
     const maxLag = Math.min(audioDiffs.length, videoDiffs.length, this.config.windowSize);
     let bestCorrelation = 0;
     let bestLag = 0;
@@ -129,15 +107,11 @@ export class DriftDetector {
       }
     }
 
-    // Convert lag to milliseconds
     const driftMs = bestLag * (1000 / this.config.sampleRate);
 
     return driftMs;
   }
 
-  /**
-   * Calculate cross-modal correlation between audio amplitude and lip aperture
-   */
   private calculateCrossModalCorrelation(): number {
     const minLen = Math.min(this.audioAmplitudes.length, this.lipApertures.length);
     
@@ -149,9 +123,6 @@ export class DriftDetector {
     return this.pearsonCorrelation(audioSubset, lipSubset);
   }
 
-  /**
-   * Pearson correlation coefficient
-   */
   private pearsonCorrelation(x: number[], y: number[]): number {
     if (x.length !== y.length || x.length === 0) return 0;
 
@@ -177,9 +148,6 @@ export class DriftDetector {
     return numerator / denominator;
   }
 
-  /**
-   * Calculate moving average of drift
-   */
   getMovingDriftAverage(windowSize: number = 10): number {
     if (this.audioTimestamps.length < 2 || this.videoTimestamps.length < 2) return 0;
 
@@ -192,7 +160,6 @@ export class DriftDetector {
       drifts.push(audioDiff - videoDiff);
     }
 
-    // Calculate moving average
     const recentDrifts = drifts.slice(-windowSize);
     if (recentDrifts.length === 0) return 0;
 
@@ -201,9 +168,6 @@ export class DriftDetector {
     return avg;
   }
 
-  /**
-   * Reset the detector state
-   */
   reset(): void {
     this.audioTimestamps = [];
     this.videoTimestamps = [];
@@ -211,9 +175,6 @@ export class DriftDetector {
     this.lipApertures = [];
   }
 
-  /**
-   * Get the number of samples collected
-   */
   getSampleCount(): number {
     return Math.min(this.audioTimestamps.length, this.videoTimestamps.length);
   }

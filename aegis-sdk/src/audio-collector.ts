@@ -1,8 +1,3 @@
-/**
- * Aegis Lens v2.0 - Audio Collector
- * Low-latency microphone collection bypassing echo cancellation
- * Captures audio for Time-of-Flight measurement
- */
 
 export interface AudioCollectorConfig {
   sampleRate?: number;
@@ -27,7 +22,7 @@ export class AudioCollector {
   private isRecording: boolean = false;
   private audioBuffer: Float32Array[] = [];
   private config: AudioCollectorConfig;
-  private readonly MAX_BUFFER_SECONDS = 10; // CRITICAL FIX: Cap at 10 seconds to prevent memory leaks (H4)
+  private readonly MAX_BUFFER_SECONDS = 10;
   private readonly MAX_BUFFER_SIZE: number;
 
   constructor(config: AudioCollectorConfig = {}) {
@@ -41,7 +36,6 @@ export class AudioCollector {
       ...config,
     };
 
-    // Calculate max buffer size in samples (10 seconds at sample rate)
     this.MAX_BUFFER_SIZE = this.MAX_BUFFER_SECONDS * this.config.sampleRate!;
 
     this.audioContext = new AudioContext({
@@ -49,15 +43,11 @@ export class AudioCollector {
     });
   }
 
-  /**
-   * Start audio capture with echo cancellation bypassed
-   */
   async startCapture(): Promise<void> {
     if (this.isRecording) {
       return;
     }
 
-    // Request microphone access with constraints to bypass audio processing
     const constraints: MediaStreamConstraints = {
       audio: {
         channelCount: this.config.channelCount,
@@ -72,8 +62,6 @@ export class AudioCollector {
     try {
       this.mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch (error) {
-      // Fallback with relaxed constraints if strict constraints fail
-      console.warn('Strict audio constraints failed, using fallback:', error);
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: false,
@@ -82,22 +70,16 @@ export class AudioCollector {
 
     const source = this.audioContext.createMediaStreamSource(this.mediaStream);
 
-    // Try to use AudioWorklet for better performance
     try {
       await this.setupAudioWorklet(source);
     } catch (error) {
-      console.warn('AudioWorklet not available, falling back to ScriptProcessor:', error);
       this.setupScriptProcessor(source);
     }
 
     this.isRecording = true;
   }
 
-  /**
-   * Set up AudioWorklet for audio processing (preferred method)
-   */
   private async setupAudioWorklet(source: MediaStreamAudioSourceNode): Promise<void> {
-    // Create a simple worklet processor
     const workletCode = `
       class AudioProcessor extends AudioWorkletProcessor {
         constructor() {
@@ -135,7 +117,6 @@ export class AudioCollector {
     this.audioWorklet.port.onmessage = (event) => {
       if (event.data.type === 'audioData') {
         this.audioBuffer.push(new Float32Array(event.data.data));
-        // CRITICAL FIX: Enforce sliding window to prevent unbounded growth (H4)
         this.enforceBufferLimit();
       }
     };
@@ -144,9 +125,6 @@ export class AudioCollector {
     this.audioWorklet.connect(this.audioContext.destination);
   }
 
-  /**
-   * Set up ScriptProcessor as fallback (deprecated but widely supported)
-   */
   private setupScriptProcessor(source: MediaStreamAudioSourceNode): void {
     this.scriptProcessor = this.audioContext.createScriptProcessor(
       this.config.bufferSize!,
@@ -156,7 +134,6 @@ export class AudioCollector {
 
     this.scriptProcessor.onaudioprocess = (event) => {
       const inputData = event.inputBuffer.getChannelData(0);
-      // Copy the data to avoid reference issues
       const dataCopy = new Float32Array(inputData.length);
       dataCopy.set(inputData);
       this.audioBuffer.push(dataCopy);
@@ -168,9 +145,6 @@ export class AudioCollector {
     this.scriptProcessor.connect(this.audioContext.destination);
   }
 
-  /**
-   * Stop audio capture
-   */
   stopCapture(): void {
     if (!this.isRecording) {
       return;
@@ -194,9 +168,6 @@ export class AudioCollector {
     }
   }
 
-  /**
-   * Get collected audio data
-   */
   getAudioData(): AudioData {
     if (this.audioBuffer.length === 0) {
       return {
@@ -206,7 +177,6 @@ export class AudioCollector {
       };
     }
 
-    // Concatenate all buffers
     const totalLength = this.audioBuffer.reduce((sum, buf) => sum + buf.length, 0);
     const combinedBuffer = new Float32Array(totalLength);
     let offset = 0;
@@ -223,22 +193,14 @@ export class AudioCollector {
     };
   }
 
-  /**
-   * Clear the audio buffer
-   */
   clearBuffer(): void {
     this.audioBuffer = [];
   }
 
-  /**
-   * Enforce buffer limit by removing oldest data when exceeding max size
-   * CRITICAL FIX: Prevents unbounded memory growth in long sessions (H4)
-   */
   private enforceBufferLimit(): void {
     const currentSampleCount = this.audioBuffer.reduce((sum, buf) => sum + buf.length, 0);
     
     if (currentSampleCount > this.MAX_BUFFER_SIZE) {
-      // Remove oldest buffers until we're under the limit
       while (this.audioBuffer.length > 0 && 
              this.audioBuffer.reduce((sum, buf) => sum + buf.length, 0) > this.MAX_BUFFER_SIZE) {
         this.audioBuffer.shift();
@@ -246,32 +208,20 @@ export class AudioCollector {
     }
   }
 
-  /**
-   * Get the number of samples collected
-   */
   getSampleCount(): number {
     return this.audioBuffer.reduce((sum, buf) => sum + buf.length, 0);
   }
 
-  /**
-   * Check if recording is active
-   */
   isCapturing(): boolean {
     return this.isRecording;
   }
 
-  /**
-   * Resume the AudioContext (required after user interaction)
-   */
   async resume(): Promise<void> {
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume();
     }
   }
 
-  /**
-   * Close the AudioContext
-   */
   close(): void {
     this.stopCapture();
     this.audioContext.close();

@@ -90,9 +90,6 @@ pub fn is_virtual_camera(deltas: &[f64]) -> bool {
     }
 
     let variance = stats::welford_variance(deltas);
-    
-    // Physical hardware: variance in [50, 500] μs²
-    // Virtual cameras: variance < 12 μs²
     variance < 12.0
 }
 
@@ -106,7 +103,6 @@ pub fn get_confidence_score(deltas: &[f64]) -> f64 {
     let kl_div = stats::kl_divergence_laplace(deltas);
     let shapiro_w = stats::royston_shapiro_wilk(deltas);
 
-    // Composite scoring algorithm
     let variance_score = if variance >= 50.0 && variance <= 500.0 {
         1.0 - ((variance - 275.0).abs() / 225.0).min(1.0)
     } else if variance < 12.0 {
@@ -118,6 +114,5 @@ pub fn get_confidence_score(deltas: &[f64]) -> f64 {
     let kl_score = (1.0 - kl_div.min(1.0)).max(0.0);
     let shapiro_score = shapiro_w;
 
-    // Weighted composite
     (variance_score * 0.4 + kl_score * 0.3 + shapiro_score * 0.3) * 100.0
 }

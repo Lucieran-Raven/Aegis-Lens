@@ -1,7 +1,3 @@
-/**
- * Aegis Lens v2.0 - Payload Builder
- * Constructs telemetry payloads for submission to the verification server
- */
 
 import {
   TelemetryPayload,
@@ -24,9 +20,6 @@ export class PayloadBuilder {
     this.clientTimestamp = Date.now();
   }
 
-  /**
-   * Set camera timing entropy data (Signal A)
-   */
   setCameraTiming(data: {
     variance: number;
     stdDev: number;
@@ -46,9 +39,6 @@ export class PayloadBuilder {
     return this;
   }
 
-  /**
-   * Set acoustic Time-of-Flight data (Signal B)
-   */
   setAcousticData(data: {
     timeOfFlightMs: number;
     correlationPeak: number;
@@ -66,9 +56,6 @@ export class PayloadBuilder {
     return this;
   }
 
-  /**
-   * Set eye tracking / PCCR data (Signal C)
-   */
   setEyeTracking(data: {
     microsaccadeRate: number;
     glintParallaxVariance: number;
@@ -84,9 +71,6 @@ export class PayloadBuilder {
     return this;
   }
 
-  /**
-   * Set lip-sync drift data (Signal D - proxy detection)
-   */
   setLipSync(data: {
     audioVideoDriftMs: number;
     lipVelocityCorrelation: number;
@@ -102,9 +86,6 @@ export class PayloadBuilder {
     return this;
   }
 
-  /**
-   * Build the final telemetry payload
-   */
   build(): TelemetryPayload {
     return {
       sessionId: this.sessionId,
@@ -116,9 +97,6 @@ export class PayloadBuilder {
     };
   }
 
-  /**
-   * Reset the builder for reuse
-   */
   reset(): PayloadBuilder {
     this.clientTimestamp = Date.now();
     this.cameraTiming = undefined;

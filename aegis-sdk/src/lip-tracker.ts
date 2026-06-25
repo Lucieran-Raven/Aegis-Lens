@@ -1,8 +1,3 @@
-/**
- * Aegis Lens v2.0 - Lip Tracker
- * Uses MediaPipe facial mesh models for vocal mechanics coordinates
- * Detects lip-sync anomalies and proxy attacks
- */
 
 export interface LipCoordinates {
   upperLip: { x: number; y: number };
@@ -31,27 +26,18 @@ export class LipTracker {
   private lipHistory: LipCoordinates[] = [];
   private audioHistory: number[] = [];
   private startTime: number = 0;
-  private readonly MAX_FRAMES = 300; // CRITICAL FIX: Cap at 300 frames (~10 seconds at 30Hz) to prevent memory leaks (P3)
+  private readonly MAX_FRAMES = 300;
 
   constructor(config: Partial<LipTrackerConfig> = {}) {
     this.config = {
-      sampleRate: 30, // 30 Hz lip tracking
-      driftThresholdMs: 150, // 150ms max drift
-      correlationThreshold: 0.6, // Minimum correlation for sync
+      sampleRate: 30,
+      driftThresholdMs: 150,
+      correlationThreshold: 0.6,
       ...config,
     };
   }
 
-  /**
-   * Add lip coordinates from facial mesh
-   * Uses MediaPipe Face Mesh landmarks (indices 13, 14, 61, 291 for lips)
-   */
   addLipCoordinates(landmarks: number[][], timestamp: number): void {
-    // Extract key lip landmarks
-    // Upper lip: landmark 13
-    // Lower lip: landmark 14
-    // Left corner: landmark 61
-    // Right corner: landmark 291
     const upperLip = landmarks[13] || { x: 0, y: 0 };
     const lowerLip = landmarks[14] || { x: 0, y: 0 };
     const leftCorner = landmarks[61] || { x: 0, y: 0 };
@@ -65,9 +51,8 @@ export class LipTracker {
       timestamp,
     });
 
-    // CRITICAL FIX: Enforce circular buffer limit to prevent unbounded growth (P3)
     if (this.lipHistory.length > this.MAX_FRAMES) {
-      this.lipHistory.shift(); // Remove oldest frame
+      this.lipHistory.shift();
     }
 
     if (this.startTime === 0) {
@@ -75,21 +60,14 @@ export class LipTracker {
     }
   }
 
-  /**
-   * Add audio amplitude for correlation analysis
-   */
   addAudioAmplitude(amplitude: number): void {
     this.audioHistory.push(amplitude);
 
-    // CRITICAL FIX: Enforce circular buffer limit to prevent unbounded growth (P3)
     if (this.audioHistory.length > this.MAX_FRAMES) {
-      this.audioHistory.shift(); // Remove oldest frame
+      this.audioHistory.shift();
     }
   }
 
-  /**
-   * Analyze lip-sync data
-   */
   analyze(): LipSyncResult {
     if (this.lipHistory.length < 10) {
       return {
@@ -122,13 +100,9 @@ export class LipTracker {
     };
   }
 
-  /**
-   * Calculate audio-video drift in milliseconds
-   */
   private calculateAudioVideoDrift(): number {
     if (this.lipHistory.length < 2 || this.audioHistory.length < 2) return 0;
 
-    // Calculate lip opening/closing velocity
     const lipVelocities: number[] = [];
     for (let i = 1; i < this.lipHistory.length; i++) {
       const prev = this.lipHistory[i - 1];
@@ -143,22 +117,18 @@ export class LipTracker {
         (curr.upperLip.y - curr.lowerLip.y) ** 2
       );
 
-      const dt = (curr.timestamp - prev.timestamp) / 1000; // seconds
+      const dt = (curr.timestamp - prev.timestamp) / 1000;
       if (dt > 0) {
         lipVelocities.push((currDistance - prevDistance) / dt);
       }
     }
 
-    // Find correlation peak between lip velocity and audio
     const audioAmplitudes = this.audioHistory.slice(-lipVelocities.length);
     const drift = this.findCrossCorrelationPeak(lipVelocities, audioAmplitudes);
 
     return drift;
   }
 
-  /**
-   * Find cross-correlation peak to estimate drift
-   */
   private findCrossCorrelationPeak(signal1: number[], signal2: number[]): number {
     const maxLag = Math.min(signal1.length, signal2.length);
     let maxCorrelation = 0;
@@ -180,17 +150,12 @@ export class LipTracker {
       }
     }
 
-    // Convert lag to milliseconds
     return (bestLag / this.config.sampleRate) * 1000;
   }
 
-  /**
-   * Calculate correlation between lip velocity and audio amplitude
-   */
   private calculateLipVelocityCorrelation(): number {
     if (this.lipHistory.length < 2 || this.audioHistory.length < 2) return 0;
 
-    // Calculate lip opening velocities
     const lipVelocities: number[] = [];
     for (let i = 1; i < this.lipHistory.length; i++) {
       const prev = this.lipHistory[i - 1];
@@ -211,7 +176,6 @@ export class LipTracker {
       }
     }
 
-    // Align with audio
     const audioSubset = this.audioHistory.slice(-lipVelocities.length);
 
     if (lipVelocities.length < 2) return 0;
@@ -219,9 +183,6 @@ export class LipTracker {
     return this.pearsonCorrelation(lipVelocities, audioSubset);
   }
 
-  /**
-   * Pearson correlation coefficient
-   */
   private pearsonCorrelation(x: number[], y: number[]): number {
     if (x.length !== y.length || x.length === 0) return 0;
 
@@ -247,29 +208,15 @@ export class LipTracker {
     return numerator / denominator;
   }
 
-  /**
-   * Detect if multiple faces are present
-   * This is a simplified check - in production, MediaPipe would provide face count
-   */
   private detectMultipleFaces(): boolean {
-    // This would be determined by MediaPipe's face detection
-    // For now, return false as placeholder
-    // In production, check the number of detected faces from MediaPipe
     return false;
   }
 
-  /**
-   * Determine if lip-sync is valid
-   */
   private isLipSynced(
     driftMs: number,
     correlation: number,
     multiPerson: boolean
   ): boolean {
-    // Valid sync requires:
-    // - Drift below threshold
-    // - Correlation above threshold
-    // - Single person
 
     const validDrift = driftMs <= this.config.driftThresholdMs;
     const validCorrelation = correlation >= this.config.correlationThreshold;
@@ -278,9 +225,6 @@ export class LipTracker {
     return validDrift && validCorrelation && singlePerson;
   }
 
-  /**
-   * Calculate lip aperture (distance between upper and lower lip)
-   */
   getLipAperture(): number {
     if (this.lipHistory.length === 0) return 0;
 
@@ -291,18 +235,12 @@ export class LipTracker {
     );
   }
 
-  /**
-   * Reset the tracker state
-   */
   reset(): void {
     this.lipHistory = [];
     this.audioHistory = [];
     this.startTime = 0;
   }
 
-  /**
-   * Get the number of samples collected
-   */
   getSampleCount(): number {
     return this.lipHistory.length;
   }

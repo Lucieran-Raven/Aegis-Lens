@@ -1,8 +1,3 @@
-/**
- * Aegis Lens v2.0 - Main SDK Entry Point
- * Hardware-layer digital truth validation platform
- * Zero-PII architecture - all biometrics processed client-side
- */
 
 import { AegisApiClient, AegisClientConfig } from './api-client';
 import { PayloadBuilder } from './payload-builder';
@@ -13,7 +8,7 @@ import { CameraTimingSignal, SessionVerifyResponse } from './proto/session';
 
 export interface AegisConfig extends AegisClientConfig {
   videoElement: HTMLVideoElement;
-  wasmUrl?: string; // Optional WASM module URL
+  wasmUrl?: string;
   frameCollectorConfig?: FrameCollectorConfig;
   workerBridgeConfig?: WorkerBridgeConfig;
 }
@@ -45,25 +40,16 @@ export class AegisLens {
     this.workerBridge = new WorkerBridge(config.workerBridgeConfig);
   }
 
-  /**
-   * Initialize the SDK
-   * - Generate ephemeral key pair
-   * - Initialize session with server
-   * - Set up Web Worker
-   */
   async initialize(): Promise<void> {
     if (this.isInitialized) {
       return;
     }
 
-    // Generate ephemeral ECDSA P-256 key pair
     this.keyPair = await AegisCrypto.generateKeyPair();
 
-    // Initialize Web Worker with entropy analysis script
     const workerScript = this.getWorkerScript();
     await this.workerBridge.initialize(workerScript);
 
-    // Set up result callback
     this.workerBridge.onResult((result: EntropyResult) => {
       this.handleEntropyResult(result);
     });
@@ -71,9 +57,6 @@ export class AegisLens {
     this.isInitialized = true;
   }
 
-  /**
-   * Start a new verification session
-   */
   async startSession(): Promise<string> {
     if (!this.isInitialized) {
       throw new Error('AegisLens not initialized. Call initialize() first.');
@@ -94,28 +77,20 @@ export class AegisLens {
     return this.sessionId;
   }
 
-  /**
-   * Analyze camera timing entropy (Signal A)
-   */
   async analyzeCameraTiming(): Promise<CameraTimingSignal> {
     if (!this.isInitialized) {
       throw new Error('AegisLens not initialized. Call initialize() first.');
     }
 
-    // Start frame collection
     this.frameCollector.start();
 
-    // Wait for collection to complete
     await this.waitForFrameCollection();
 
-    // Get frame deltas
     const frameDeltas = this.frameCollector.getFrameDeltas();
 
-    // Write to worker bridge for analysis
     this.workerBridge.writeFrameDeltas(frameDeltas);
     this.workerBridge.triggerAnalysis();
 
-    // Wait for analysis result
     const result = await this.waitForEntropyResult();
 
     return {
@@ -128,24 +103,18 @@ export class AegisLens {
     };
   }
 
-  /**
-   * Build and submit telemetry payload for verification
-   */
   async submitTelemetry(cameraTiming: CameraTimingSignal): Promise<SessionVerifyResponse> {
     if (!this.sessionId || !this.keyPair) {
       throw new Error('No active session or key pair');
     }
 
-    // Build payload
     const payloadBuilder = new PayloadBuilder(this.sessionId);
     payloadBuilder.setCameraTiming(cameraTiming);
     const telemetry = payloadBuilder.build();
 
-    // Serialize and sign
     const telemetryBytes = new TextEncoder().encode(JSON.stringify(telemetry));
     const signature = await AegisCrypto.signPayload(this.keyPair.privateKey, telemetryBytes);
 
-    // Submit to server
     const verifyRequest = {
       telemetry,
       signature,
@@ -155,25 +124,14 @@ export class AegisLens {
     return await this.apiClient.verifySession(verifyRequest);
   }
 
-  /**
-   * Get confidence score for current analysis
-   */
   getConfidenceScore(): number {
-    // This would be updated by the worker callback
     return 0;
   }
 
-  /**
-   * Check if virtual camera is detected
-   */
   isVirtualCameraDetected(): boolean {
-    // This would be updated by the worker callback
     return false;
   }
 
-  /**
-   * Cleanup resources
-   */
   cleanup(): void {
     this.frameCollector.stop();
     this.frameCollector.reset();
@@ -183,17 +141,11 @@ export class AegisLens {
     this.keyPair = null;
   }
 
-  // Private helper methods
 
   private getWorkerScript(): string {
-    // Return the entropy worker script as a string
-    // In production, this would be loaded from a separate file
     return `
-      // Web Worker script will be loaded from entropy.worker.ts
-      // For now, this is a placeholder
       self.onmessage = (event) => {
         if (event.data.type === 'analyze') {
-          // Process analysis
           self.postMessage({ type: 'result', result: {} });
         }
       };

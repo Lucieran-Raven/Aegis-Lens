@@ -1,11 +1,4 @@
-// Statistical algorithms for hardware timing entropy analysis
-// Implements Welford online variance, KL divergence, and Shapiro-Wilk test
 
-/// Welford Online Variance Algorithm
-/// Computes sliding-window variance without precision degradation
-/// M_{1,n} = M_{1,n-1} + (x_n - M_{1,n-1}) / n
-/// S_n = S_{n-1} + (x_n - M_{1,n-1})(x_n - M_{1,n})
-/// σ² = S_n / (n-1)
 pub fn welford_variance(samples: &[f64]) -> f64 {
     if samples.len() < 2 {
         return 0.0;
@@ -29,16 +22,11 @@ pub fn welford_variance(samples: &[f64]) -> f64 {
     }
 }
 
-/// Pre-computed reference distribution for virtual cameras
-/// Based on empirical analysis of OBS, ManyCam, v4l2loopback timing profiles
 const VIRTUAL_CAM_Q: [f64; 20] = [
     0.85, 0.10, 0.03, 0.01, 0.005, 0.003, 0.002, 0.001, 0.001, 0.001,
     0.001, 0.001, 0.001, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000, 0.000,
 ];
 
-/// Laplace-Smoothed Kullback-Leibler (KL) Divergence
-/// Compares timing histogram P against pre-computed virtual camera reference distribution Q
-/// KL(P || Q) = Σ P(k) * ln(P(k) / (Q(k) + ε))
 pub fn kl_divergence_laplace(samples: &[f64]) -> f64 {
     if samples.is_empty() {
         return 0.0;
@@ -49,7 +37,6 @@ pub fn kl_divergence_laplace(samples: &[f64]) -> f64 {
     let mut histogram_p = vec![0.0; bin_count];
     let mut total = 0.0;
 
-    // Build histogram from samples (assuming samples are in microseconds)
     let max_delta = samples.iter().cloned().fold(f64::NAN, f64::max);
     let bin_width = (max_delta / bin_count as f64).max(1.0);
 
@@ -63,14 +50,12 @@ pub fn kl_divergence_laplace(samples: &[f64]) -> f64 {
         return 0.0;
     }
 
-    // Normalize P with Laplace smoothing
-    let alpha = 1.0; // Laplace smoothing parameter
+    let alpha = 1.0;
     let smoothed_total = total + (alpha * bin_count as f64);
     for p in histogram_p.iter_mut() {
         *p = (*p + alpha) / smoothed_total;
     }
 
-    // Compute KL divergence
     let mut kl_div = 0.0;
     for (p, q) in histogram_p.iter().zip(VIRTUAL_CAM_Q.iter()) {
         let q_smoothed = q.max(epsilon);
@@ -82,9 +67,6 @@ pub fn kl_divergence_laplace(samples: &[f64]) -> f64 {
     kl_div
 }
 
-/// Royston-Approximated Shapiro-Wilk W Test
-/// Evaluates statistical normality to ensure frame jitter follows natural Gaussian distribution
-/// Optimized for n <= 89 (typical frame capture window)
 pub fn royston_shapiro_wilk(samples: &[f64]) -> f64 {
     let n = samples.len();
     
@@ -93,15 +75,12 @@ pub fn royston_shapiro_wilk(samples: &[f64]) -> f64 {
     }
     
     if n > 89 {
-        // For larger samples, use approximation
         return shapiro_wilk_approximation(samples);
     }
 
-    // Sort samples for coefficient calculation
     let mut sorted = samples.to_vec();
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-    // Royston algorithm coefficients (simplified for production)
     let w = compute_shapiro_wilk_statistic(&sorted);
     
     w
@@ -114,44 +93,35 @@ fn compute_shapiro_wilk_statistic(sorted: &[f64]) -> f64 {
         return 0.0;
     }
 
-    // Calculate mean
     let mean: f64 = sorted.iter().sum();
     let mean = mean / n as f64;
 
-    // Calculate sum of squared deviations
     let ss: f64 = sorted.iter().map(|x| (x - mean).powi(2)).sum();
     
     if ss == 0.0 {
         return 0.0;
     }
 
-    // Generate weights based on normal distribution quantiles
     let weights = generate_normal_weights(n);
     
-    // Calculate numerator (weighted sum)
     let mut numerator = 0.0;
     for (i, &x) in sorted.iter().enumerate() {
         numerator += weights[i] * x;
     }
     numerator = numerator.powi(2);
 
-    // W statistic
     numerator / ss
 }
 
 fn generate_normal_weights(n: usize) -> Vec<f64> {
-    // Approximation of normal distribution weights for Shapiro-Wilk
-    // Using Blom's formula: (i - 3/8) / (n + 1/4)
     let mut weights = Vec::with_capacity(n);
     
     for i in 1..=n {
         let p = (i as f64 - 0.375) / (n as f64 + 0.25);
-        // Approximate normal quantile using Beasley-Springer-Moro algorithm
         let z = normal_quantile(p);
         weights.push(z);
     }
 
-    // Center weights
     let mean_w: f64 = weights.iter().sum();
     let mean_w = mean_w / n as f64;
     for w in weights.iter_mut() {
@@ -162,7 +132,6 @@ fn generate_normal_weights(n: usize) -> Vec<f64> {
 }
 
 fn normal_quantile(p: f64) -> f64 {
-    // Beasley-Springer-Moro algorithm for normal quantile
     let a = [0.0, -3.969683028665376e+01, 2.209460984245205e+02,
              -2.759285104469687e+02, 1.383577518672690e+02,
              -3.066479806614716e+01, 2.506628277459239e+00];
@@ -200,7 +169,6 @@ fn normal_quantile(p: f64) -> f64 {
 }
 
 fn shapiro_wilk_approximation(samples: &[f64]) -> f64 {
-    // Simplified approximation for n > 89
     let n = samples.len();
     let variance = welford_variance(samples);
     let std_dev = variance.sqrt();
@@ -209,19 +177,15 @@ fn shapiro_wilk_approximation(samples: &[f64]) -> f64 {
         return 0.0;
     }
 
-    // Skewness approximation
     let mean: f64 = samples.iter().sum::<f64>() / n as f64;
     let skewness: f64 = samples.iter()
         .map(|x| ((x - mean) / std_dev).powi(3))
         .sum::<f64>() / n as f64;
 
-    // Kurtosis approximation
     let kurtosis: f64 = samples.iter()
         .map(|x| ((x - mean) / std_dev).powi(4))
         .sum::<f64>() / n as f64 - 3.0;
 
-    // Combine metrics for W approximation
-    // Normal distribution: skewness ≈ 0, kurtosis ≈ 0
     let skew_score = (1.0 - skewness.abs().min(1.0)).max(0.0);
     let kurt_score = (1.0 - kurtosis.abs().min(1.0)).max(0.0);
     

@@ -20,7 +20,6 @@ import (
 )
 
 func main() {
-	// Load environment variables
 	redisAddr := getEnv("REDIS_ADDR", "localhost:6379")
 	timescaleConn := getEnv("TIMESCALE_CONN", "postgres://localhost/aegis?sslmode=disable")
 	serverPort := getEnv("SERVER_PORT", "8443")
@@ -28,37 +27,30 @@ func main() {
 	tlsKeyPath := getEnv("TLS_KEY_PATH", "/etc/ssl/private/aegis-backend.key")
 	allowedOrigins := getEnv("ALLOWED_ORIGINS", "https://yourdomain.com,https://app.yourdomain.com")
 
-	// Initialize Redis client
 	redisClient, err := storage.NewRedisClient(redisAddr)
 	if err != nil {
 		log.Fatalf("Failed to initialize Redis: %v", err)
 	}
 	defer redisClient.Close()
 
-	// Initialize TimescaleDB client
 	timescaleClient, err := storage.NewTimescaleClient(timescaleConn)
 	if err != nil {
 		log.Fatalf("Failed to initialize TimescaleDB: %v", err)
 	}
 	defer timescaleClient.Close()
 
-	// Initialize database schema
 	ctx := context.Background()
 	if err := timescaleClient.InitializeSchema(ctx); err != nil {
 		log.Fatalf("Failed to initialize database schema: %v", err)
 	}
 
-	// Initialize signature verifier
 	signatureVerifier := handlers.NewSignatureVerifier()
 
-	// Initialize handlers
 	sessionInitHandler := handlers.NewSessionInitHandler(redisClient)
 	sessionVerifyHandler := handlers.NewSessionVerifyHandler(redisClient, signatureVerifier)
 
-	// Set up router
 	r := chi.NewRouter()
 
-	// Parse allowed origins from environment
 	originsList := []string{}
 	for _, origin := range []string{allowedOrigins} {
 		if origin != "" {
@@ -66,12 +58,10 @@ func main() {
 		}
 	}
 	if len(originsList) == 0 {
-		// Fallback to localhost for development
-		originsList = []string{"http://localhost:3000", "http://localhost:8080"}
+			originsList = []string{"http://localhost:3000", "http://localhost:8080"}
 		log.Println("WARNING: Using localhost origins. Set ALLOWED_ORIGINS for production.")
 	}
 
-	// CORS middleware - STRICT WHITELIST (C1 FIX)
 	corsMiddleware := cors.New(cors.Options{
 		AllowedOrigins:   originsList,
 		AllowedMethods:   []string{"POST", "OPTIONS"},
@@ -83,7 +73,6 @@ func main() {
 	})
 	r.Use(corsMiddleware.Handler)
 
-	// HSTS Middleware (C2 FIX)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
@@ -91,7 +80,6 @@ func main() {
 		})
 	})
 
-	// COOP/COEP Middleware (C3 FIX - CRITICAL for SharedArrayBuffer)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
@@ -100,19 +88,15 @@ func main() {
 		})
 	})
 
-	// Rate Limiting Middleware (C4 FIX - 100 req/min per IP, burst 20)
-	// Uses sync.Map to store per-IP limiters for distributed rate limiting
 	var ipLimiters sync.Map
 
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Extract IP address
-			ip, _, err := net.SplitHostPort(r.RemoteAddr)
+				ip, _, err := net.SplitHostPort(r.RemoteAddr)
 			if err != nil {
 				ip = r.RemoteAddr
 			}
 
-			// Get or create limiter for this IP
 			limiterIface, _ := ipLimiters.LoadOrStore(ip, rate.NewLimiter(rate.Limit(100.0), 20))
 			limiter := limiterIface.(*rate.Limiter)
 
@@ -125,7 +109,6 @@ func main() {
 		})
 	})
 
-	// Request Size Limit Middleware (H7 FIX)
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			r.Body = http.MaxBytesReader(w, r.Body, 1<<20) // 1MB max
@@ -133,8 +116,6 @@ func main() {
 		})
 	})
 
-	// Content-Type Validation Middleware
-	// Requires application/json for POST endpoints to prevent content-type confusion attacks
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost {
@@ -148,8 +129,6 @@ func main() {
 		})
 	})
 
-	// Content Security Policy Middleware (H5 FIX)
-	// Blocks cross-site scripting (XSS) injection vectors
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Security-Policy", 
@@ -163,11 +142,9 @@ func main() {
 		})
 	})
 
-	// Health check endpoint with dependency checks
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		
-		// Check Redis connectivity
 		redisCtx, redisCancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer redisCancel()
 		if err := redisClient.Ping(redisCtx); err != nil {
@@ -176,7 +153,6 @@ func main() {
 			return
 		}
 		
-		// Check TimescaleDB connectivity
 		dbCtx, dbCancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer dbCancel()
 		if err := timescaleClient.Ping(dbCtx); err != nil {
@@ -189,11 +165,9 @@ func main() {
 		_, _ = w.Write([]byte(`{"status":"ok","service":"aegis-backend"}`))
 	})
 
-	// Register API routes
 	sessionInitHandler.RegisterRoutes(r)
 	sessionVerifyHandler.RegisterRoutes(r)
 
-	// Configure TLS with secure cipher suites (C2 FIX)
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 		CipherSuites: []uint16{
@@ -208,7 +182,6 @@ func main() {
 		PreferServerCipherSuites: true,
 	}
 
-	// Create HTTPS server
 	server := &http.Server{
 		Addr:         ":" + serverPort,
 		Handler:      r,
@@ -218,7 +191,6 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	// Start HTTPS server in goroutine
 	go func() {
 		log.Printf("Aegis Lens v2.0 Backend starting on port %s (HTTPS)", serverPort)
 		if err := server.ListenAndServeTLS(tlsCertPath, tlsKeyPath); err != nil && err != http.ErrServerClosed {
@@ -226,14 +198,12 @@ func main() {
 		}
 	}()
 
-	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
 
 	log.Println("Shutting down server...")
 
-	// Graceful shutdown with timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 

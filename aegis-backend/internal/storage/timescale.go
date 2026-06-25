@@ -9,12 +9,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// TimescaleClient handles TimescaleDB operations for audit logging
 type TimescaleClient struct {
 	pool *pgxpool.Pool
 }
 
-// VerificationEvent represents a verification event for audit logging
 type VerificationEvent struct {
 	SessionID       string    `json:"session_id"`
 	ClientID        string    `json:"client_id"`
@@ -26,7 +24,6 @@ type VerificationEvent struct {
 	Timestamp       time.Time `json:"timestamp"`
 }
 
-// NewTimescaleClient creates a new TimescaleDB connection pool
 func NewTimescaleClient(connString string) (*TimescaleClient, error) {
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
@@ -38,7 +35,6 @@ func NewTimescaleClient(connString string) (*TimescaleClient, error) {
 		return nil, fmt.Errorf("failed to create connection pool: %w", err)
 	}
 
-	// Test connection
 	if err := pool.Ping(context.Background()); err != nil {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
@@ -46,10 +42,8 @@ func NewTimescaleClient(connString string) (*TimescaleClient, error) {
 	return &TimescaleClient{pool: pool}, nil
 }
 
-// InitializeSchema creates the necessary hypertables
 func (t *TimescaleClient) InitializeSchema(ctx context.Context) error {
 	queries := []string{
-		// Create sessions hypertable
 		`CREATE TABLE IF NOT EXISTS sessions (
 			session_id TEXT PRIMARY KEY,
 			client_id TEXT NOT NULL,
@@ -59,7 +53,6 @@ func (t *TimescaleClient) InitializeSchema(ctx context.Context) error {
 			expires_at TIMESTAMPTZ NOT NULL
 		)`,
 
-		// Create verification_events hypertable
 		`CREATE TABLE IF NOT EXISTS verification_events (
 			id BIGSERIAL PRIMARY KEY,
 			session_id TEXT NOT NULL REFERENCES sessions(session_id),
@@ -71,13 +64,10 @@ func (t *TimescaleClient) InitializeSchema(ctx context.Context) error {
 			timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
 		)`,
 
-		// Convert sessions to hypertable
 		`SELECT create_hypertable('sessions', 'created_at', if_not_exists => TRUE)`,
 
-		// Convert verification_events to hypertable
 		`SELECT create_hypertable('verification_events', 'timestamp', if_not_exists => TRUE)`,
 
-		// Create indexes for performance
 		`CREATE INDEX IF NOT EXISTS idx_sessions_client_id ON sessions(client_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_verification_events_session_id ON verification_events(session_id)`,
 		`CREATE INDEX IF NOT EXISTS idx_verification_events_timestamp ON verification_events(timestamp DESC)`,
@@ -93,7 +83,6 @@ func (t *TimescaleClient) InitializeSchema(ctx context.Context) error {
 	return nil
 }
 
-// StoreSession stores a session in the database
 func (t *TimescaleClient) StoreSession(ctx context.Context, session *SessionData) error {
 	query := `
 		INSERT INTO sessions (session_id, client_id, device_fingerprint, public_key_pem, created_at, expires_at)
@@ -118,7 +107,6 @@ func (t *TimescaleClient) StoreSession(ctx context.Context, session *SessionData
 	return nil
 }
 
-// LogVerificationEvent logs a verification event asynchronously
 func (t *TimescaleClient) LogVerificationEvent(ctx context.Context, event *VerificationEvent) error {
 	signalFlagsJSON, err := json.Marshal(event.SignalFlags)
 	if err != nil {
@@ -149,19 +137,15 @@ func (t *TimescaleClient) LogVerificationEvent(ctx context.Context, event *Verif
 	return nil
 }
 
-// LogVerificationEventAsync logs a verification event in a non-blocking goroutine
 func (t *TimescaleClient) LogVerificationEventAsync(event *VerificationEvent) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
-		if err := t.LogVerificationEvent(ctx, event); err != nil {
-			fmt.Printf("Async log failed: %v\n", err)
-		}
+		_ = t.LogVerificationEvent(ctx, event)
 	}()
 }
 
-// GetSessionEvents retrieves all verification events for a session
 func (t *TimescaleClient) GetSessionEvents(ctx context.Context, sessionID string) ([]VerificationEvent, error) {
 	query := `
 		SELECT session_id, verdict, confidence_score, signal_flags,
@@ -206,7 +190,6 @@ func (t *TimescaleClient) GetSessionEvents(ctx context.Context, sessionID string
 	return events, nil
 }
 
-// GetStats retrieves verification statistics
 func (t *TimescaleClient) GetStats(ctx context.Context, timeRange time.Duration) (map[string]int64, error) {
 	query := `
 		SELECT verdict, COUNT(*) as count
@@ -234,12 +217,10 @@ func (t *TimescaleClient) GetStats(ctx context.Context, timeRange time.Duration)
 	return stats, nil
 }
 
-// Close closes the connection pool
 func (t *TimescaleClient) Close() {
 	t.pool.Close()
 }
 
-// Ping checks database connectivity
 func (t *TimescaleClient) Ping(ctx context.Context) error {
 	return t.pool.Ping(ctx)
 }

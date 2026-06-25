@@ -10,14 +10,11 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// SessionVerifyHandler handles POST /api/v2/session/verify
-// Features strict 30s clock-skew defenses and signature verification
 type SessionVerifyHandler struct {
 	redisClient RedisClient
 	verifier    *SignatureVerifier
 }
 
-// NewSessionVerifyHandler creates a new session verification handler
 func NewSessionVerifyHandler(redisClient RedisClient, verifier *SignatureVerifier) *SessionVerifyHandler {
 	return &SessionVerifyHandler{
 		redisClient: redisClient,
@@ -25,14 +22,12 @@ func NewSessionVerifyHandler(redisClient RedisClient, verifier *SignatureVerifie
 	}
 }
 
-// SessionVerifyRequest payload
 type SessionVerifyRequest struct {
 	Telemetry     TelemetryPayload `json:"telemetry"`
 	Signature     []byte          `json:"signature"`
 	PublicKeyPEM  string          `json:"public_key_pem"`
 }
 
-// TelemetryPayload represents the forensic telemetry data
 type TelemetryPayload struct {
 	SessionID      string              `json:"session_id"`
 	ClientTimestamp int64             `json:"client_timestamp"`
@@ -42,7 +37,6 @@ type TelemetryPayload struct {
 	LipSync        *LipSyncSignal     `json:"lip_sync,omitempty"`
 }
 
-// CameraTimingSignal represents Signal A data
 type CameraTimingSignal struct {
 	Variance      float64   `json:"variance"`
 	StdDev        float64   `json:"std_dev"`
@@ -52,7 +46,6 @@ type CameraTimingSignal struct {
 	FrameDeltas   []float64 `json:"frame_deltas"`
 }
 
-// AcousticSignal represents Signal B data
 type AcousticSignal struct {
 	TimeOfFlightMs        float64 `json:"time_of_flight_ms"`
 	CorrelationPeak       float64 `json:"correlation_peak"`
@@ -61,7 +54,6 @@ type AcousticSignal struct {
 	SampleCount           int     `json:"sample_count"`
 }
 
-// EyeTrackingSignal represents Signal C data
 type EyeTrackingSignal struct {
 	MicrosaccadeRate       float64 `json:"microsaccade_rate"`
 	GlintParallaxVariance  float64 `json:"glint_parallax_variance"`
@@ -69,7 +61,6 @@ type EyeTrackingSignal struct {
 	GazeSamples            int     `json:"gaze_samples"`
 }
 
-// LipSyncSignal represents Signal D data
 type LipSyncSignal struct {
 	AudioVideoDriftMs      float64 `json:"audio_video_drift_ms"`
 	LipVelocityCorrelation float64 `json:"lip_velocity_correlation"`
@@ -77,7 +68,6 @@ type LipSyncSignal struct {
 	SyncSamples            int     `json:"sync_samples"`
 }
 
-// SessionVerifyResponse payload
 type SessionVerifyResponse struct {
 	SessionID       string   `json:"session_id"`
 	Verdict         string   `json:"verdict"`
@@ -87,13 +77,11 @@ type SessionVerifyResponse struct {
 }
 
 const (
-	MaxClockSkew = 30 * time.Second // Strict 30s clock-skew defense
+	MaxClockSkew = 30 * time.Second
 )
 
 // validateTelemetry performs strict bounds checking on all telemetry numeric fields
-// CRITICAL FIX: Prevents NaN, Infinity, and out-of-bounds values from bypassing detection (H2)
 func validateTelemetry(t *TelemetryPayload) error {
-	// Validate Camera Timing Signal
 	if t.CameraTiming != nil {
 		if math.IsNaN(t.CameraTiming.Variance) || math.IsInf(t.CameraTiming.Variance, 0) {
 			return fmt.Errorf("invalid camera timing variance: NaN or Infinity")
@@ -124,7 +112,6 @@ func validateTelemetry(t *TelemetryPayload) error {
 		}
 	}
 
-	// Validate Acoustic Signal
 	if t.Acoustic != nil {
 		if math.IsNaN(t.Acoustic.TimeOfFlightMs) || math.IsInf(t.Acoustic.TimeOfFlightMs, 0) {
 			return fmt.Errorf("invalid acoustic time_of_flight_ms: NaN or Infinity")
@@ -149,7 +136,6 @@ func validateTelemetry(t *TelemetryPayload) error {
 		}
 	}
 
-	// Validate Eye Tracking Signal
 	if t.EyeTracking != nil {
 		if math.IsNaN(t.EyeTracking.MicrosaccadeRate) || math.IsInf(t.EyeTracking.MicrosaccadeRate, 0) {
 			return fmt.Errorf("invalid eye tracking microsaccade_rate: NaN or Infinity")
@@ -174,7 +160,6 @@ func validateTelemetry(t *TelemetryPayload) error {
 		}
 	}
 
-	// Validate Lip Sync Signal
 	if t.LipSync != nil {
 		if math.IsNaN(t.LipSync.AudioVideoDriftMs) || math.IsInf(t.LipSync.AudioVideoDriftMs, 0) {
 			return fmt.Errorf("invalid lip sync audio_video_drift_ms: NaN or Infinity")
@@ -197,32 +182,27 @@ func validateTelemetry(t *TelemetryPayload) error {
 }
 
 func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// Only accept POST
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Parse request body
 	var req SessionVerifyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	// Validate required fields
 	if req.Telemetry.SessionID == "" {
 		http.Error(w, "session_id is required", http.StatusBadRequest)
 		return
 	}
 
-	// CRITICAL FIX: Validate telemetry numeric fields for NaN, Infinity, and bounds (H2)
 	if err := validateTelemetry(&req.Telemetry); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid telemetry data: %v", err), http.StatusBadRequest)
 		return
 	}
 
-	// Retrieve session from Redis
 	ctx := r.Context()
 	session, err := h.redisClient.GetSession(ctx, req.Telemetry.SessionID)
 	if err != nil {
@@ -230,7 +210,6 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Clock-skew defense
 	now := time.Now()
 	clientTime := time.UnixMilli(req.Telemetry.ClientTimestamp)
 	if now.Sub(clientTime) > MaxClockSkew || clientTime.Sub(now) > MaxClockSkew {
@@ -238,7 +217,6 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Verify signature
 	telemetryBytes, err := json.Marshal(req.Telemetry)
 	if err != nil {
 		http.Error(w, "Failed to marshal telemetry", http.StatusInternalServerError)
@@ -256,19 +234,12 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// Update public key in session if not already set
 	if session.PublicKeyPEM == "" {
-		err = h.redisClient.UpdatePublicKey(ctx, req.Telemetry.SessionID, req.PublicKeyPEM)
-		if err != nil {
-			// Log error but continue with verification
-			fmt.Printf("Failed to update public key: %v\n", err)
-		}
+		_ = h.redisClient.UpdatePublicKey(ctx, req.Telemetry.SessionID, req.PublicKeyPEM)
 	}
 
-	// Score the telemetry
 	verdict, confidence, flags := h.scoreTelemetry(&req.Telemetry)
 
-	// Build response
 	resp := SessionVerifyResponse{
 		SessionID:       req.Telemetry.SessionID,
 		Verdict:         verdict,
@@ -277,7 +248,6 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		ServerTimestamp: now.UnixMilli(),
 	}
 
-	// Send response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
@@ -286,12 +256,10 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// scoreTelemetry evaluates the telemetry and returns a verdict
 func (h *SessionVerifyHandler) scoreTelemetry(telemetry *TelemetryPayload) (string, float64, []string) {
 	var flags []string
 	var confidence float64 = 100.0
 
-	// Signal A: Camera timing entropy
 	if telemetry.CameraTiming != nil {
 		if telemetry.CameraTiming.Variance < 12.0 {
 			flags = append(flags, "LOW_VARIANCE_VIRTUAL_CAM")
@@ -307,7 +275,6 @@ func (h *SessionVerifyHandler) scoreTelemetry(telemetry *TelemetryPayload) (stri
 		}
 	}
 
-	// Signal B: Acoustic Time-of-Flight
 	if telemetry.Acoustic != nil {
 		if telemetry.Acoustic.TimeOfFlightMs < 0.5 {
 			flags = append(flags, "INSTANT_AUDIO_LOOPBACK")
@@ -323,7 +290,6 @@ func (h *SessionVerifyHandler) scoreTelemetry(telemetry *TelemetryPayload) (stri
 		}
 	}
 
-	// Signal C: Eye tracking
 	if telemetry.EyeTracking != nil {
 		if telemetry.EyeTracking.MicrosaccadeRate < 0.5 {
 			flags = append(flags, "LOW_MICROSACCADE_RATE")
@@ -335,7 +301,6 @@ func (h *SessionVerifyHandler) scoreTelemetry(telemetry *TelemetryPayload) (stri
 		}
 	}
 
-	// Signal D: Lip-sync drift
 	if telemetry.LipSync != nil {
 		if telemetry.LipSync.AudioVideoDriftMs > 150.0 {
 			flags = append(flags, "EXCESSIVE_AV_DRIFT")
@@ -347,7 +312,6 @@ func (h *SessionVerifyHandler) scoreTelemetry(telemetry *TelemetryPayload) (stri
 		}
 	}
 
-	// Determine verdict based on confidence
 	var verdict string
 	if confidence >= 80.0 {
 		verdict = "CLEAR"
@@ -357,7 +321,6 @@ func (h *SessionVerifyHandler) scoreTelemetry(telemetry *TelemetryPayload) (stri
 		verdict = "BLOCKED"
 	}
 
-	// Ensure confidence is within bounds
 	if confidence < 0.0 {
 		confidence = 0.0
 	}
@@ -368,7 +331,6 @@ func (h *SessionVerifyHandler) scoreTelemetry(telemetry *TelemetryPayload) (stri
 	return verdict, confidence, flags
 }
 
-// RegisterRoutes registers the session verification routes
 func (h *SessionVerifyHandler) RegisterRoutes(r chi.Router) {
 	r.Post("/api/v2/session/verify", h.ServeHTTP)
 }

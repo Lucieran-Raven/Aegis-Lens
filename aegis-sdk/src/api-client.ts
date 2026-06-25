@@ -1,7 +1,3 @@
-/**
- * Aegis Lens v2.0 - API Client
- * Handles server handshake protocol and secure communication
- */
 
 import {
   SessionInitRequest,
@@ -25,10 +21,6 @@ export class AegisApiClient {
     };
   }
 
-  /**
-   * Initialize a new session with the server
-   * Generates cryptographic nonce and session ID
-   */
   async initSession(request: SessionInitRequest): Promise<SessionInitResponse> {
     const url = `${this.config.apiEndpoint}/api/v2/session/init`;
     
@@ -59,10 +51,6 @@ export class AegisApiClient {
     };
   }
 
-  /**
-   * Submit telemetry for verification
-   * Includes cryptographic signature for authenticity
-   */
   async verifySession(request: SessionVerifyRequest): Promise<SessionVerifyResponse> {
     const url = `${this.config.apiEndpoint}/api/v2/session/verify`;
     

@@ -62,10 +62,39 @@ jobs:
         working-directory: ./aegis-sdk
         run: npm test -- --passWithNoTests chirp-generator.test.ts glint-detector.test.ts
 
+  rust:
+    name: Rust WASM
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: stable
+          toolchain: stable
+      
+      - name: Install wasm-pack
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+      
+      - name: Run cargo check
+        working-directory: ./aegis-sdk/src-rust
+        run: cargo check
+      
+      - name: Run cargo test
+        working-directory: ./aegis-sdk/src-rust
+        run: cargo test
+      
+      - name: Build WASM
+        working-directory: ./aegis-sdk/src-rust
+        run: wasm-pack build --target web --release
+
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
-    needs: [backend, sdk]
+    needs: [backend, sdk, rust]
     
     steps:
       - name: Checkout code

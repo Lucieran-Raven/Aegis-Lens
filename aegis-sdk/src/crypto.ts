@@ -1,7 +1,3 @@
-/**
- * Aegis Lens v2.0 - Cryptography Module
- * Handles ECDSA P-256 key generation and payload signing using WebCrypto API
- */
 
 export interface KeyPair {
   privateKey: CryptoKey;
@@ -10,21 +6,16 @@ export interface KeyPair {
 }
 
 export class AegisCrypto {
-  /**
-   * Generate an ephemeral ECDSA P-256 key pair for session authentication
-   * CRITICAL FIX: extractable set to false to prevent private key extraction by malicious JavaScript (H1)
-   */
   static async generateKeyPair(): Promise<KeyPair> {
     const keyPair = await window.crypto.subtle.generateKey(
       {
         name: 'ECDSA',
         namedCurve: 'P-256',
       },
-      false, // CRITICAL: NOT extractable - prevents malicious JS from exporting the private key
+      false,
       ['sign']
     );
 
-    // Export public key to PEM format
     const publicKeySpki = await window.crypto.subtle.exportKey(
       'spki',
       keyPair.publicKey
@@ -38,14 +29,10 @@ export class AegisCrypto {
     };
   }
 
-  /**
-   * Sign telemetry payload using ECDSA P-256
-   */
   static async signPayload(
     privateKey: CryptoKey,
     payload: Uint8Array
   ): Promise<Uint8Array> {
-    // Copy to regular ArrayBuffer to avoid SharedArrayBuffer issues with WebCrypto
     const bufferCopy = new ArrayBuffer(payload.byteLength);
     new Uint8Array(bufferCopy).set(payload);
     
@@ -61,15 +48,11 @@ export class AegisCrypto {
     return new Uint8Array(signature);
   }
 
-  /**
-   * Verify signature using public key (for testing/validation)
-   */
   static async verifySignature(
     publicKey: CryptoKey,
     signature: Uint8Array,
     payload: Uint8Array
   ): Promise<boolean> {
-    // Copy to regular ArrayBuffer to avoid SharedArrayBuffer issues with WebCrypto
     const sigCopy = new ArrayBuffer(signature.byteLength);
     new Uint8Array(sigCopy).set(signature);
     const payloadCopy = new ArrayBuffer(payload.byteLength);
@@ -86,9 +69,6 @@ export class AegisCrypto {
     );
   }
 
-  /**
-   * Convert SPKI (SubjectPublicKeyInfo) to PEM format
-   */
   private static spkiToPem(spki: ArrayBuffer): string {
     const spkiBuffer = new Uint8Array(spki);
     let spkiString = '';
@@ -100,9 +80,6 @@ export class AegisCrypto {
     return `-----BEGIN PUBLIC KEY-----\n${this.wrapBase64(base64)}\n-----END PUBLIC KEY-----`;
   }
 
-  /**
-   * Wrap base64 string to 64-character lines
-   */
   private static wrapBase64(base64: string): string {
     const lines: string[] = [];
     for (let i = 0; i < base64.length; i += 64) {
@@ -111,9 +88,6 @@ export class AegisCrypto {
     return lines.join('\n');
   }
 
-  /**
-   * Import a PEM-formatted public key
-   */
   static async importPublicKey(pem: string): Promise<CryptoKey> {
     const pemContents = pem
       .replace('-----BEGIN PUBLIC KEY-----', '')
@@ -138,11 +112,7 @@ export class AegisCrypto {
     );
   }
 
-  /**
-   * Hash data using SHA-256
-   */
   static async sha256(data: Uint8Array): Promise<Uint8Array> {
-    // Copy to regular ArrayBuffer to avoid SharedArrayBuffer issues with WebCrypto
     const dataCopy = new ArrayBuffer(data.byteLength);
     new Uint8Array(dataCopy).set(data);
     
@@ -150,9 +120,6 @@ export class AegisCrypto {
     return new Uint8Array(hashBuffer);
   }
 
-  /**
-   * Generate a random nonce for cryptographic operations
-   */
   static generateNonce(length: number = 32): Uint8Array {
     const nonce = new Uint8Array(length);
     window.crypto.getRandomValues(nonce);
