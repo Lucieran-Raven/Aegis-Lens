@@ -152,21 +152,60 @@ fn normal_quantile(p: f64) -> f64 {
 
     if r <= 0.23 {
         let t = q * q;
-        let num = q * (((((a[7]*t + a[6])*t + a[5])*t + a[4])*t + a[3])*t + a[2])*t + a[1])*t + a[0];
-        let den = (((((b[6]*t + b[5])*t + b[4])*t + b[3])*t + b[2])*t + b[1])*t + 1.0;
+        let num = {
+            let t2 = t * t;
+            let t3 = t2 * t;
+            let t4 = t3 * t;
+            let t5 = t4 * t;
+            let t6 = t5 * t;
+            q * (a[7]*t6 + a[6]*t5 + a[5]*t4 + a[4]*t3 + a[3]*t2 + a[2]*t + a[1])*t + a[0]
+        };
+        let den = {
+            let t2 = t * t;
+            let t3 = t2 * t;
+            let t4 = t3 * t;
+            let t5 = t4 * t;
+            b[6]*t5 + b[5]*t4 + b[4]*t3 + b[3]*t2 + b[2]*t + b[1]*t + 1.0
+        };
         num / den
     } else if r <= 0.46 {
         let t = r - 0.25;
         let sign = if q < 0.0 { -1.0 } else { 1.0 };
-        let num = sign * (((((c[7]*t + c[6])*t + c[5])*t + c[4])*t + c[3])*t + c[2])*t + c[1])*t + c[0];
-        let den = (((((d[6]*t + d[5])*t + d[4])*t + d[3])*t + d[2])*t + d[1])*t + 1.0;
+        let num = {
+            let t2 = t * t;
+            let t3 = t2 * t;
+            let t4 = t3 * t;
+            let t5 = t4 * t;
+            let t6 = t5 * t;
+            sign * (c[7]*t6 + c[6]*t5 + c[5]*t4 + c[4]*t3 + c[3]*t2 + c[2]*t + c[1])*t + c[0]
+        };
+        let den = {
+            let t2 = t * t;
+            let t3 = t2 * t;
+            let t4 = t3 * t;
+            let t5 = t4 * t;
+            d[6]*t5 + d[5]*t4 + d[4]*t3 + d[3]*t2 + d[2]*t + d[1]*t + 1.0
+        };
         num / den
     } else {
         let t = if q < 0.0 { p } else { 1.0 - p };
         let sign = if q < 0.0 { -1.0 } else { 1.0 };
         let u = t.sqrt().ln();
-        let num = sign * (((((c[7]*u + c[6])*u + c[5])*u + c[4])*u + c[3])*u + c[2])*u + c[1])*u + c[0];
-        let den = (((((d[6]*u + d[5])*u + d[4])*u + d[3])*u + d[2])*u + d[1])*u + 1.0;
+        let num = {
+            let u2 = u * u;
+            let u3 = u2 * u;
+            let u4 = u3 * u;
+            let u5 = u4 * u;
+            let u6 = u5 * u;
+            sign * (c[7]*u6 + c[6]*u5 + c[5]*u4 + c[4]*u3 + c[3]*u2 + c[2]*u + c[1])*u + c[0]
+        };
+        let den = {
+            let u2 = u * u;
+            let u3 = u2 * u;
+            let u4 = u3 * u;
+            let u5 = u4 * u;
+            d[6]*u5 + d[5]*u4 + d[4]*u3 + d[3]*u2 + d[2]*u + d[1]*u + 1.0
+        };
         num / den
     }
 }
