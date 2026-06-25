@@ -136,10 +136,6 @@ jobs:
           curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
-      - name: Install wasm-bindgen-test-runner
-        run: |
-          cargo install wasm-bindgen-test-runner
-
       - name: Add wasm32 target
         run: rustup target add wasm32-unknown-unknown
 
@@ -147,9 +143,9 @@ jobs:
         working-directory: ./aegis-sdk/src-rust
         run: cargo check --target wasm32-unknown-unknown
 
-      - name: Run cargo test
+      - name: Run wasm-pack test
         working-directory: ./aegis-sdk/src-rust
-        run: cargo test
+        run: wasm-pack test --node
 
       - name: Build WASM
         working-directory: ./aegis-sdk/src-rust
