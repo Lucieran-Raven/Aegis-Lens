@@ -51,17 +51,6 @@ jobs:
         working-directory: ./aegis-backend
         run: go test -race ./...
 
-      - name: Run coverage
-        working-directory: ./aegis-backend
-        run: go test -coverprofile=coverage.out ./...
-
-      - name: Upload coverage
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./aegis-backend/coverage.out
-          flags: backend
-          fail_ci_if_error: false
-
   sdk:
     name: SDK (TypeScript)
     runs-on: ubuntu-latest
