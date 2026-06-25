@@ -1,8 +1,10 @@
 use wasm_bindgen::prelude::*;
+use serde::{Serialize, Deserialize};
 
 mod stats;
 
 #[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
 pub struct EntropyResult {
     pub variance: f64,
     pub std_dev: f64,
