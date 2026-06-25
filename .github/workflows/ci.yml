@@ -45,7 +45,15 @@ jobs:
 
       - name: Run tests
         working-directory: ./aegis-backend
-        run: go test -v -race -coverprofile=coverage.out ./...
+        run: go test -v ./...
+
+      - name: Run race detector
+        working-directory: ./aegis-backend
+        run: go test -race ./...
+
+      - name: Run coverage
+        working-directory: ./aegis-backend
+        run: go test -coverprofile=coverage.out ./...
 
       - name: Upload coverage
         uses: codecov/codecov-action@v4
@@ -106,9 +114,8 @@ jobs:
         run: bash .github/scripts/env_check.sh
 
       - name: Set up Rust
-        uses: actions/setup-rust@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          rust-version: stable
           toolchain: stable
 
       - name: Cache Cargo registry
