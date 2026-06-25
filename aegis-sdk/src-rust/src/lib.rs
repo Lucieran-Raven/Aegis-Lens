@@ -26,31 +26,6 @@ impl EntropyResult {
         }
     }
 
-    #[wasm_bindgen(getter)]
-    pub fn variance(&self) -> f64 {
-        self.variance
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn std_dev(&self) -> f64 {
-        self.std_dev
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn kl_divergence(&self) -> f64 {
-        self.kl_divergence
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn shapiro_wilk_w(&self) -> f64 {
-        self.shapiro_wilk_w
-    }
-
-    #[wasm_bindgen(getter)]
-    pub fn sample_count(&self) -> usize {
-        self.sample_count
-    }
-
     #[wasm_bindgen]
     pub fn to_json(&self) -> Result<String, JsValue> {
         serde_json::to_string(self)
