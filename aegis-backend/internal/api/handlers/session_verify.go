@@ -13,12 +13,14 @@ import (
 type SessionVerifyHandler struct {
 	redisClient RedisClient
 	verifier    *SignatureVerifier
+	engine      *ScoringEngine
 }
 
 func NewSessionVerifyHandler(redisClient RedisClient, verifier *SignatureVerifier) *SessionVerifyHandler {
 	return &SessionVerifyHandler{
 		redisClient: redisClient,
 		verifier:    verifier,
+		engine:      NewScoringEngine(DefaultThresholds()),
 	}
 }
 
@@ -238,13 +240,13 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		_ = h.redisClient.UpdatePublicKey(ctx, req.Telemetry.SessionID, req.PublicKeyPEM)
 	}
 
-	verdict, confidence, flags := h.scoreTelemetry(&req.Telemetry)
+	result := h.engine.Evaluate(ctx, &req.Telemetry)
 
 	resp := SessionVerifyResponse{
 		SessionID:       req.Telemetry.SessionID,
-		Verdict:         verdict,
-		ConfidenceScore: confidence,
-		SignalFlags:     flags,
+		Verdict:         string(result.Verdict),
+		ConfidenceScore: result.ConfidenceScore,
+		SignalFlags:     result.SignalFlags,
 		ServerTimestamp: now.UnixMilli(),
 	}
 
@@ -254,81 +256,6 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
-}
-
-func (h *SessionVerifyHandler) scoreTelemetry(telemetry *TelemetryPayload) (string, float64, []string) {
-	var flags []string
-	var confidence float64 = 100.0
-
-	if telemetry.CameraTiming != nil {
-		if telemetry.CameraTiming.Variance < 12.0 {
-			flags = append(flags, "LOW_VARIANCE_VIRTUAL_CAM")
-			confidence -= 50.0
-		}
-		if telemetry.CameraTiming.KLDivergence > 0.5 {
-			flags = append(flags, "HIGH_KL_DIVERGENCE")
-			confidence -= 20.0
-		}
-		if telemetry.CameraTiming.ShapiroWilkW < 0.9 {
-			flags = append(flags, "NON_GAUSSIAN_DISTRIBUTION")
-			confidence -= 15.0
-		}
-	}
-
-	if telemetry.Acoustic != nil {
-		if telemetry.Acoustic.TimeOfFlightMs < 0.5 {
-			flags = append(flags, "INSTANT_AUDIO_LOOPBACK")
-			confidence -= 40.0
-		}
-		if telemetry.Acoustic.TimeOfFlightMs > 10.0 {
-			flags = append(flags, "EXCESSIVE_AUDIO_DELAY")
-			confidence -= 20.0
-		}
-		if !telemetry.Acoustic.PhaseSignatureValid {
-			flags = append(flags, "INVALID_PHASE_SIGNATURE")
-			confidence -= 30.0
-		}
-	}
-
-	if telemetry.EyeTracking != nil {
-		if telemetry.EyeTracking.MicrosaccadeRate < 0.5 {
-			flags = append(flags, "LOW_MICROSACCADE_RATE")
-			confidence -= 25.0
-		}
-		if telemetry.EyeTracking.GlintParallaxVariance < 0.1 {
-			flags = append(flags, "ABSENT_GLINT_PARALLAX")
-			confidence -= 35.0
-		}
-	}
-
-	if telemetry.LipSync != nil {
-		if telemetry.LipSync.AudioVideoDriftMs > 150.0 {
-			flags = append(flags, "EXCESSIVE_AV_DRIFT")
-			confidence -= 30.0
-		}
-		if telemetry.LipSync.MultiPersonDetected {
-			flags = append(flags, "MULTI_PERSON_DETECTED")
-			confidence -= 50.0
-		}
-	}
-
-	var verdict string
-	if confidence >= 80.0 {
-		verdict = "CLEAR"
-	} else if confidence >= 50.0 {
-		verdict = "SUSPICIOUS"
-	} else {
-		verdict = "BLOCKED"
-	}
-
-	if confidence < 0.0 {
-		confidence = 0.0
-	}
-	if confidence > 100.0 {
-		confidence = 100.0
-	}
-
-	return verdict, confidence, flags
 }
 
 func (h *SessionVerifyHandler) RegisterRoutes(r chi.Router) {
