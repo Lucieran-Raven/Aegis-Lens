@@ -136,6 +136,10 @@ jobs:
           curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
+      - name: Install wasm-bindgen-test-runner
+        run: |
+          cargo install wasm-bindgen-test-runner
+
       - name: Add wasm32 target
         run: rustup target add wasm32-unknown-unknown
 
