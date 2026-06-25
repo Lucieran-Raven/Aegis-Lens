@@ -50,8 +50,8 @@ export class AegisLens {
     const workerScript = this.getWorkerScript();
     await this.workerBridge.initialize(workerScript);
 
-    this.workerBridge.onResult((result: EntropyResult) => {
-      this.handleEntropyResult(result);
+    this.workerBridge.onResult((_result: EntropyResult) => {
+      this.handleEntropyResult();
     });
 
     this.isInitialized = true;
@@ -173,7 +173,7 @@ export class AegisLens {
     });
   }
 
-  private handleEntropyResult(_result: EntropyResult): void {
+  private handleEntropyResult(): void {
   }
 
   private generateClientId(): string {
