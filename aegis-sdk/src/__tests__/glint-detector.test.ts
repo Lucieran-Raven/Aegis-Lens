@@ -3,7 +3,7 @@
  * Tests for corneal reflection tracking and micro-saccade analysis
  */
 
-import { GlintDetector } from '../glint-detector';
+import { GlintDetector } from '../detectors/glint-detector';
 
 describe('GlintDetector', () => {
   let detector: GlintDetector;

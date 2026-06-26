@@ -3,7 +3,7 @@
  * Tests for WebAudio API chirp generation
  */
 
-import { ChirpGenerator } from '../chirp-generator';
+import { ChirpGenerator } from '../analyzers/chirp-generator';
 
 describe('ChirpGenerator', () => {
   let generator: ChirpGenerator;
