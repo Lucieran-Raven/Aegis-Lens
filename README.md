@@ -26,7 +26,7 @@ docker-compose up -d
 curl http://localhost:8080/health
 ```
 
-For detailed integration instructions, security header requirements, and CORS configuration, see [INTEGRATION.md](INTEGRATION.md).
+For detailed integration instructions, security header requirements, and CORS configuration, see [docs/INTEGRATION.md](docs/INTEGRATION.md).
 
 ## Live Detection Demo
 
@@ -76,7 +76,7 @@ All biometric processing happens client-side. The server only receives aggregate
 
 ### Attack Simulation
 
-See [demo/attack-simulation.ts](demo/attack-simulation.ts) for a comprehensive demo showing how the system detects various attack vectors (virtual camera, virtual audio, overlay reading, proxy dubbing).
+See [examples/attack-simulation.ts](examples/attack-simulation.ts) for a comprehensive demo showing how the system detects various attack vectors (virtual camera, virtual audio, overlay reading, proxy dubbing).
 
 ## Security Features
 
@@ -99,5 +99,5 @@ Proprietary - All rights reserved.
 
 ## Documentation
 
-- [INTEGRATION.md](INTEGRATION.md) - Integration guide and security requirements
-- [HARDENING_REPORT.md](HARDENING_REPORT.md) - Security audit findings and remediation
+- [docs/INTEGRATION.md](docs/INTEGRATION.md) - Integration guide and security requirements
+- [docs/HARDENING_REPORT.md](docs/HARDENING_REPORT.md) - Security audit findings and remediation
