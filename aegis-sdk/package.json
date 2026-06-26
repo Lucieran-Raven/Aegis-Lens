@@ -22,7 +22,10 @@
   "author": "Aegis Lens Security Team",
   "license": "Proprietary",
   "dependencies": {
-    "@aegis-lens/wasm": "file:./src-rust/pkg"
+    "@aegis-lens/wasm": "file:./src-rust/pkg",
+    "webgazer": "^2.1.0",
+    "@mediapipe/face_mesh": "^0.4.1633559619",
+    "@mediapipe/camera_utils": "^0.3.1640029074"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^25.0.0",

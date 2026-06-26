@@ -61,6 +61,8 @@ type EyeTrackingSignal struct {
 	GlintParallaxVariance  float64 `json:"glint_parallax_variance"`
 	LuminanceCorrelation   float64 `json:"luminance_correlation"`
 	GazeSamples            int     `json:"gaze_samples"`
+	Status                 string  `json:"status,omitempty"`
+	Reason                 string  `json:"reason,omitempty"`
 }
 
 type LipSyncSignal struct {
@@ -68,6 +70,8 @@ type LipSyncSignal struct {
 	LipVelocityCorrelation float64 `json:"lip_velocity_correlation"`
 	MultiPersonDetected    bool    `json:"multi_person_detected"`
 	SyncSamples            int     `json:"sync_samples"`
+	Status                 string  `json:"status,omitempty"`
+	Reason                 string  `json:"reason,omitempty"`
 }
 
 type SessionVerifyResponse struct {

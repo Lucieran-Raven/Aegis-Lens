@@ -86,6 +86,30 @@ export class PayloadBuilder {
     return this;
   }
 
+  setEyeTrackingUnavailable(reason: string): PayloadBuilder {
+    this.eyeTracking = {
+      microsaccadeRate: 0,
+      glintParallaxVariance: 0,
+      luminanceCorrelation: 0,
+      gazeSamples: 0,
+    } as any;
+    (this.eyeTracking as any).status = 'unavailable';
+    (this.eyeTracking as any).reason = reason;
+    return this;
+  }
+
+  setLipSyncUnavailable(reason: string): PayloadBuilder {
+    this.lipSync = {
+      audioVideoDriftMs: 0,
+      lipVelocityCorrelation: 0,
+      multiPersonDetected: false,
+      syncSamples: 0,
+    } as any;
+    (this.lipSync as any).status = 'unavailable';
+    (this.lipSync as any).reason = reason;
+    return this;
+  }
+
   build(): TelemetryPayload {
     return {
       sessionId: this.sessionId,

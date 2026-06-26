@@ -16,7 +16,7 @@ export class WorkerBridge {
   private sharedBuffer: SharedArrayBuffer | null = null;
   private int32View: Int32Array | null = null;
   private worker: Worker | null = null;
-  private isInitialized: boolean = false;
+  public isInitialized: boolean = false;
   private onResultCallback: ((result: EntropyResult) => void) | null = null;
 
   private readonly HEAD_INDEX = 0;
@@ -31,7 +31,7 @@ export class WorkerBridge {
     };
   }
 
-  async initialize(workerScript: string): Promise<void> {
+  async initialize(workerScript: string, wasmUrl?: string): Promise<void> {
     if (this.isInitialized) {
       return;
     }
@@ -63,6 +63,7 @@ export class WorkerBridge {
       headIndex: this.HEAD_INDEX,
       tailIndex: this.TAIL_INDEX,
       dataStart: this.DATA_START,
+      wasmUrl: wasmUrl,
     }, [this.sharedBuffer]);
 
     this.isInitialized = true;

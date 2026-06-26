@@ -90,18 +90,30 @@ func (e *ScoringEngine) Evaluate(ctx context.Context, telemetry *TelemetryPayloa
 
 	// Evaluate Signal C: Eye tracking
 	if telemetry.EyeTracking != nil {
-		eyeScore, eyeFlags := e.evaluateEyeTracking(telemetry.EyeTracking)
-		breakdown["eye_tracking"] = eyeScore
-		confidence += eyeScore
-		flags = append(flags, eyeFlags...)
+		// Skip evaluation if signal is marked as unavailable
+		if telemetry.EyeTracking.Status != "unavailable" {
+			eyeScore, eyeFlags := e.evaluateEyeTracking(telemetry.EyeTracking)
+			breakdown["eye_tracking"] = eyeScore
+			confidence += eyeScore
+			flags = append(flags, eyeFlags...)
+		} else {
+			breakdown["eye_tracking"] = 0
+			flags = append(flags, "EYE_TRACKING_UNAVAILABLE")
+		}
 	}
 
 	// Evaluate Signal D: Lip-sync
 	if telemetry.LipSync != nil {
-		lipScore, lipFlags := e.evaluateLipSync(telemetry.LipSync)
-		breakdown["lip_sync"] = lipScore
-		confidence += lipScore
-		flags = append(flags, lipFlags...)
+		// Skip evaluation if signal is marked as unavailable
+		if telemetry.LipSync.Status != "unavailable" {
+			lipScore, lipFlags := e.evaluateLipSync(telemetry.LipSync)
+			breakdown["lip_sync"] = lipScore
+			confidence += lipScore
+			flags = append(flags, lipFlags...)
+		} else {
+			breakdown["lip_sync"] = 0
+			flags = append(flags, "LIP_SYNC_UNAVAILABLE")
+		}
 	}
 
 	// Normalize confidence score
