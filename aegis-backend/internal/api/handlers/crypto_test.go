@@ -69,7 +69,7 @@ func TestSignatureVerifier_VerifySignature(t *testing.T) {
 			}
 
 			hashed := sha256.Sum256(testPayload)
-			r, s, err := ecdsa.Sign(rand.Reader, privateKey, hashed[:], nil)
+			r, s, err := ecdsa.Sign(rand.Reader, privateKey, hashed[:])
 			if err != nil {
 				t.Fatalf("Failed to sign payload: %v", err)
 			}

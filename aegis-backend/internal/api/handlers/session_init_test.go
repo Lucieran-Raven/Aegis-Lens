@@ -8,25 +8,27 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/aegis-lens/backend/internal/storage"
 )
 
 // Mock RedisClient for testing
 type mockRedisClient struct {
-	sessions map[string]*SessionData
+	sessions map[string]*storage.SessionData
 }
 
 func newMockRedisClient() *mockRedisClient {
 	return &mockRedisClient{
-		sessions: make(map[string]*SessionData),
+		sessions: make(map[string]*storage.SessionData),
 	}
 }
 
-func (m *mockRedisClient) StoreSession(ctx context.Context, session *SessionData) error {
+func (m *mockRedisClient) StoreSession(ctx context.Context, session *storage.SessionData) error {
 	m.sessions[session.SessionID] = session
 	return nil
 }
 
-func (m *mockRedisClient) GetSession(ctx context.Context, sessionID string) (*SessionData, error) {
+func (m *mockRedisClient) GetSession(ctx context.Context, sessionID string) (*storage.SessionData, error) {
 	session, exists := m.sessions[sessionID]
 	if !exists {
 		return nil, fmt.Errorf("session not found")
@@ -175,5 +177,6 @@ func TestSessionInitHandler_RegisterRoutes(t *testing.T) {
 
 	// This test just ensures RegisterRoutes doesn't panic
 	// In a real test, you'd verify the route is registered correctly
-	handler.RegisterRoutes(nil)
+	r := chi.NewRouter()
+	handler.RegisterRoutes(r)
 }
