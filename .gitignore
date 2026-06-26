@@ -10,6 +10,7 @@ yarn-error.log*
 aegis-backend/aegis-backend
 aegis-sdk/dist/
 aegis-sdk/src-rust/pkg/
+aegis-sdk/src-rust/target/
 aegis-sdk/.rollup.cache/
 aegis-sdk/tsconfig.tsbuildinfo
 
