@@ -4,7 +4,7 @@
  * Passes frame delta arrays to Web Worker for WASM processing
  */
 
-import { EntropyResult } from './index';
+import { EntropyResult } from '../index';
 
 export interface WorkerBridgeConfig {
   bufferSize?: number; // Size of SharedArrayBuffer in bytes (default: 65536)

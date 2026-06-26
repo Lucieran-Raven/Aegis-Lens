@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package aegis.v2;
 
-option go_package = "github.com/aegis-lens/backend/proto/aegis/v2;aegisv2";
+option go_package = "github.com/aegis-lens/backend/proto;aegisv2";
 
 // SessionInitRequest - Client requests session initialization
 message SessionInitRequest {

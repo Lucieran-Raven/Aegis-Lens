@@ -3,7 +3,7 @@
  * Tests for WebCrypto API ECDSA P-256 operations
  */
 
-import { AegisCrypto } from '../crypto';
+import { AegisCrypto } from '../crypto/crypto';
 
 // Mock Web Crypto API for deterministic testing
 const mockSubtle = {

@@ -3,7 +3,7 @@
  * Tests for Time-of-Flight analysis using cross-correlation
  */
 
-import { ToFAnalyzer } from '../tof-analyzer';
+import { ToFAnalyzer } from '../analyzers/tof-analyzer';
 
 describe('ToFAnalyzer', () => {
   let analyzer: ToFAnalyzer;

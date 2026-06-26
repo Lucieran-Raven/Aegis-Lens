@@ -5,7 +5,7 @@ import {
   AcousticSignal,
   EyeTrackingSignal,
   LipSyncSignal,
-} from './proto/session';
+} from '../proto/session';
 
 export class PayloadBuilder {
   private sessionId: string;

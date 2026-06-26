@@ -3,7 +3,7 @@
  * Tests for spectral energy distribution analysis
  */
 
-import { HWDetector } from '../hw-detector';
+import { HWDetector } from '../detectors/hardware-detector';
 
 describe('HWDetector', () => {
   let detector: HWDetector;

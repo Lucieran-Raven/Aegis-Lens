@@ -1,16 +1,16 @@
 
-import { AegisApiClient, AegisClientConfig } from './api-client';
-import { PayloadBuilder } from './payload-builder';
-import { AegisCrypto, KeyPair } from './crypto';
-import { FrameCollector, FrameCollectorConfig } from './frame-collector';
-import { WorkerBridge, WorkerBridgeConfig } from './worker-bridge';
+import { AegisApiClient, AegisClientConfig } from './api/api-client';
+import { PayloadBuilder } from './api/payload-builder';
+import { AegisCrypto, KeyPair } from './crypto/crypto';
+import { FrameCollector, FrameCollectorConfig } from './collectors/frame-collector';
+import { WorkerBridge, WorkerBridgeConfig } from './workers/worker-bridge';
 import { CameraTimingSignal, SessionVerifyResponse } from './proto/session';
-import { ChirpGenerator } from './chirp-generator';
-import { ToFAnalyzer } from './tof-analyzer';
-import { AudioCollector } from './audio-collector';
-import { GlintDetector } from './glint-detector';
-import { DriftDetector } from './drift-detector';
-import { LipTracker } from './lip-tracker';
+import { ChirpGenerator } from './analyzers/chirp-generator';
+import { ToFAnalyzer } from './analyzers/tof-analyzer';
+import { AudioCollector } from './collectors/audio-collector';
+import { GlintDetector } from './detectors/glint-detector';
+import { DriftDetector } from './detectors/drift-detector';
+import { LipTracker } from './detectors/lip-tracker';
 
 export interface AegisConfig extends AegisClientConfig {
   videoElement: HTMLVideoElement;
@@ -702,9 +702,9 @@ export class AegisLens {
 }
 
 // Export all public types and classes
-export { AegisApiClient } from './api-client';
-export { PayloadBuilder } from './payload-builder';
-export { AegisCrypto } from './crypto';
-export { FrameCollector } from './frame-collector';
-export { WorkerBridge } from './worker-bridge';
+export { AegisApiClient } from './api/api-client';
+export { PayloadBuilder } from './api/payload-builder';
+export { AegisCrypto } from './crypto/crypto';
+export { FrameCollector } from './collectors/frame-collector';
+export { WorkerBridge } from './workers/worker-bridge';
 export * from './proto/session';

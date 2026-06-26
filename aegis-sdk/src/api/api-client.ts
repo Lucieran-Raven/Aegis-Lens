@@ -4,7 +4,7 @@ import {
   SessionInitResponse,
   SessionVerifyRequest,
   SessionVerifyResponse,
-} from './proto/session';
+} from '../proto/session';
 
 export interface AegisClientConfig {
   apiEndpoint: string;
