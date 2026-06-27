@@ -91,25 +91,31 @@ export class PayloadBuilder {
   }
 
   setEyeTrackingUnavailable(reason: string): PayloadBuilder {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.eyeTracking = {
       microsaccadeRate: 0,
       glintParallaxVariance: 0,
       luminanceCorrelation: 0,
       gazeSamples: 0,
     } as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (this.eyeTracking as any).status = 'unavailable';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (this.eyeTracking as any).reason = reason;
     return this;
   }
 
   setLipSyncUnavailable(reason: string): PayloadBuilder {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.lipSync = {
       audioVideoDriftMs: 0,
       lipVelocityCorrelation: 0,
       multiPersonDetected: false,
       syncSamples: 0,
     } as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (this.lipSync as any).status = 'unavailable';
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (this.lipSync as any).reason = reason;
     return this;
   }

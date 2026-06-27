@@ -1,15 +1,32 @@
 declare module '@mediapipe/face_mesh' {
-  interface FaceMeshOptions {
-    locateFile: (file: string) => string;
+  export interface FaceMeshOptions {
+    maxNumFaces?: number;
+    refineLandmarks?: boolean;
+    minDetectionConfidence?: number;
+    minTrackingConfidence?: number;
   }
 
-  interface FaceMesh {
-    setOptions(options: any): void;
-    onResults(callback: (results: any) => void): void;
+  export interface NormalizedLandmark {
+    x: number;
+    y: number;
+    z: number;
+  }
+
+  export interface FaceMeshResults {
+    multiFaceLandmarks: NormalizedLandmark[][];
+    image: HTMLVideoElement | HTMLImageElement;
+  }
+
+  export interface FaceMesh {
+    setOptions(options: FaceMeshOptions): void;
+    onResults(callback: (results: FaceMeshResults) => void): void;
+    send(inputs: { image: HTMLVideoElement }): Promise<void>;
     close(): void;
   }
 
-  export class FaceMesh {
-    constructor(options: FaceMeshOptions);
+  export interface FaceMeshConstructor {
+    new(config: { locateFile: (file: string) => string }): FaceMesh;
   }
+
+  export const FaceMesh: FaceMeshConstructor;
 }

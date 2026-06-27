@@ -1,10 +1,21 @@
 declare module 'webgazer' {
-  interface WebGazer {
-    setGazeListener(callback: (data: any) => void): WebGazer;
-    begin(): Promise<void>;
+  export interface GazeData {
+    x: number;
+    y: number;
+  }
+
+  export type GazeListener = (
+    data: GazeData | null,
+    elapsedTime: number
+  ) => void;
+
+  export interface WebGazer {
+    setGazeListener(listener: GazeListener): WebGazer;
+    begin(): Promise<WebGazer>;
+    end(): void;
     showVideoPreview(show: boolean): WebGazer;
     showPredictionPoints(show: boolean): WebGazer;
-    end(): void;
+    setVideoElement(element: HTMLVideoElement): WebGazer;
   }
 
   const webgazer: WebGazer;

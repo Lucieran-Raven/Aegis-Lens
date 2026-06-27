@@ -51,6 +51,7 @@ export class AegisLens {
   private latestLipSyncResult: LipSyncSignal | null = null;
   private sessionStartTime: number = 0;
   private videoElement: HTMLVideoElement;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private faceMesh: any = null;
   private glintDetectorAvailable: boolean = false;
   private mediapipeAvailable: boolean = false;
@@ -115,6 +116,7 @@ export class AegisLens {
       const webgazerModule = await import('webgazer');
       const webgazer = webgazerModule.default || webgazerModule;
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       webgazer.setGazeListener((data: any) => {
         if (data && this.glintDetector) {
           this.glintDetector.addGazePoint(
@@ -149,6 +151,7 @@ export class AegisLens {
         minTrackingConfidence: 0.5,
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       faceMesh.onResults((results: any) => {
         if (results.multiFaceLandmarks &&
             results.multiFaceLandmarks.length > 0) {
@@ -173,6 +176,7 @@ export class AegisLens {
           if (results.multiFaceLandmarks.length > 1) {
             console.warn('[AEGIS] Multiple faces detected');
             if (this.lipTracker) {
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               (this.lipTracker as any).setMultipleFacesDetected(true);
             }
           }
