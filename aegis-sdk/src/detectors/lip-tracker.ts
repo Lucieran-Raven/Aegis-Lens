@@ -27,6 +27,7 @@ export class LipTracker {
   private audioHistory: number[] = [];
   private startTime: number = 0;
   private readonly MAX_FRAMES = 300;
+  private multipleFacesDetected: boolean = false;
 
   constructor(config: Partial<LipTrackerConfig> = {}) {
     this.config = {
@@ -208,8 +209,13 @@ export class LipTracker {
     return numerator / denominator;
   }
 
+  // Multi-face detection based on MediaPipe results
   private detectMultipleFaces(): boolean {
-    return false;
+    return this.multipleFacesDetected;
+  }
+
+  setMultipleFacesDetected(value: boolean): void {
+    this.multipleFacesDetected = value;
   }
 
   private isLipSynced(

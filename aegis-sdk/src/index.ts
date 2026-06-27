@@ -4,7 +4,7 @@ import { PayloadBuilder } from './api/payload-builder';
 import { AegisCrypto, KeyPair } from './crypto/crypto';
 import { FrameCollector, FrameCollectorConfig } from './collectors/frame-collector';
 import { WorkerBridge, WorkerBridgeConfig } from './workers/worker-bridge';
-import { CameraTimingSignal, SessionVerifyResponse } from './proto/session';
+import { CameraTimingSignal, SessionVerifyResponse, AcousticSignal, EyeTrackingSignal, LipSyncSignal } from './proto/session';
 import { ChirpGenerator } from './analyzers/chirp-generator';
 import { ToFAnalyzer } from './analyzers/tof-analyzer';
 import { AudioCollector } from './collectors/audio-collector';
@@ -46,10 +46,9 @@ export class AegisLens {
   private isInitialized: boolean = false;
   private wasmUrl: string | undefined;
   private latestEntropyResult: EntropyResult | null = null;
-  private latestToFResult: any = null;
-  private latestGlintResult: any = null;
-  private latestLipSyncResult: any = null;
-  private webgazer: any = null;
+  private latestToFResult: AcousticSignal | null = null;
+  private latestGlintResult: EyeTrackingSignal | null = null;
+  private latestLipSyncResult: LipSyncSignal | null = null;
   private sessionStartTime: number = 0;
   private videoElement: HTMLVideoElement;
   private faceMesh: any = null;
@@ -111,92 +110,78 @@ export class AegisLens {
     this.deviceFingerprint = deviceFingerprint;
     this.sessionStartTime = Date.now();
 
-    // Initialize WebGazer for eye tracking
+    // WebGazer initialization (Eye Tracking)
     try {
-      // @ts-expect-error - webgazer is loaded dynamically
-      const webgazer = await import('webgazer');
-      this.webgazer = webgazer;
+      const webgazerModule = await import('webgazer');
+      const webgazer = webgazerModule.default || webgazerModule;
 
-      // @ts-ignore - webgazer types not available
-      await this.webgazer.setVideoElement(this.videoElement);
-
-      // @ts-ignore - webgazer types not available
-      await this.webgazer.begin();
-
-      // Set up gaze listener
-      // @ts-ignore - webgazer types not available
-      this.webgazer.setGazeListener((data: any) => {
-        if (data && data.x !== null && data.y !== null) {
-          this.glintDetector.addGazePoint(data.x, data.y, Date.now());
-          // Estimate luminance from video frame (simplified)
-          this.glintDetector.addLuminance(0.5);
+      webgazer.setGazeListener((data: any) => {
+        if (data && this.glintDetector) {
+          this.glintDetector.addGazePoint(
+            data.x,
+            data.y,
+            performance.now()
+          );
         }
       });
-      
+
+      await webgazer.begin();
+      webgazer.showVideoPreview(false);
+      webgazer.showPredictionPoints(false);
+
       this.glintDetectorAvailable = true;
-      console.log('WebGazer initialized successfully');
     } catch (error) {
-      console.warn('WebGazer initialization failed:', error);
       this.glintDetectorAvailable = false;
     }
 
-    // Initialize MediaPipe Face Mesh for lip tracking
+    // MediaPipe Face Mesh initialization (Lip Sync)
     try {
-      // @ts-ignore - MediaPipe is loaded dynamically
       const { FaceMesh } = await import('@mediapipe/face_mesh');
-      // @ts-ignore - MediaPipe Camera types not available
-      const { Camera } = await import('@mediapipe/camera_utils');
-      
-      this.faceMesh = new FaceMesh({locateFile: (file: string) => {
-        return `/mediapipe/${file}`;
-      }});
-      
-      this.faceMesh.setOptions({
-        maxNumFaces: 1,
+
+      const faceMesh = new FaceMesh({
+        locateFile: (file: string) => `/mediapipe/${file}`
+      });
+
+      faceMesh.setOptions({
+        maxNumFaces: 2,
         refineLandmarks: true,
         minDetectionConfidence: 0.5,
-        minTrackingConfidence: 0.5
+        minTrackingConfidence: 0.5,
       });
-      
-      this.faceMesh.onResults((results: any) => {
-        if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
-          const landmarks = results.multiFaceLandmarks[0];
-          const timestamp = Date.now();
-          
-          // Feed landmarks to LipTracker
-          this.lipTracker.addLipCoordinates(landmarks, timestamp);
-          
-          // Get lip aperture and feed to DriftDetector
-          const lipAperture = this.lipTracker.getLipAperture();
-          this.driftDetector.addVideoData(timestamp, lipAperture);
-          
-          // Feed audio amplitude to DriftDetector (from AudioCollector if active)
-          if (this.audioCollector.isCapturing()) {
-            const audioData = this.audioCollector.getAudioData();
-            if (audioData.buffer.length > 0) {
-              const amplitude = Math.abs(audioData.buffer[audioData.buffer.length - 1]);
-              this.driftDetector.addAudioData(timestamp, amplitude);
+
+      faceMesh.onResults((results: any) => {
+        if (results.multiFaceLandmarks &&
+            results.multiFaceLandmarks.length > 0) {
+
+          if (this.lipTracker) {
+            this.lipTracker.addLipCoordinates(
+              results.multiFaceLandmarks[0],
+              performance.now()
+            );
+          }
+
+          if (this.driftDetector) {
+            const lipAperture = this.lipTracker
+              ? this.lipTracker.getLipAperture()
+              : 0;
+            this.driftDetector.addVideoData(
+              performance.now(),
+              lipAperture
+            );
+          }
+
+          if (results.multiFaceLandmarks.length > 1) {
+            console.warn('[AEGIS] Multiple faces detected');
+            if (this.lipTracker) {
+              (this.lipTracker as any).setMultipleFacesDetected(true);
             }
           }
         }
       });
-      
-      // @ts-ignore - MediaPipe Camera types not available
-      const camera = new Camera(this.videoElement, {
-        onFrame: async () => {
-          await this.faceMesh.send({image: this.videoElement});
-        },
-        width: 640,
-        height: 480
-      });
-      
-      // @ts-ignore - MediaPipe Camera types not available
-      await camera.start();
-      
+
+      this.faceMesh = faceMesh;
       this.mediapipeAvailable = true;
-      console.log('MediaPipe Face Mesh initialized successfully');
     } catch (error) {
-      console.warn('MediaPipe Face Mesh initialization failed:', error);
       this.mediapipeAvailable = false;
     }
 
@@ -394,6 +379,7 @@ export class AegisLens {
       // We're checking if the browser supports microphone APIs
       microphoneAvailable = !!(navigator.mediaDevices && navigator.mediaDevices.enumerateDevices);
     } catch (e) {
+      // Browser may not support mediaDevices API in some contexts
       microphoneAvailable = false;
     }
     
@@ -413,31 +399,43 @@ export class AegisLens {
     };
   }
 
-  cleanup(): void {
+  async cleanup(): Promise<void> {
     this.frameCollector.stop();
     this.frameCollector.reset();
     this.workerBridge.terminate();
-    
-    // Stop WebGazer if initialized
-    if (this.webgazer) {
+
+    // Stop WebGazer
+    if (this.glintDetectorAvailable) {
       try {
-        // @ts-ignore - webgazer types not available
-        this.webgazer.end();
-      } catch (error) {
-        console.warn('WebGazer cleanup failed:', error);
+        const webgazerModule = await import('webgazer');
+        const webgazer = webgazerModule.default || webgazerModule;
+        webgazer.end();
+      } catch (e) {
+        // Ignore cleanup errors
       }
-      this.webgazer = null;
     }
-    
+
+    // Stop MediaPipe
+    if (this.faceMesh) {
+      try {
+        this.faceMesh.close();
+        this.faceMesh = null;
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+
     // Reset detectors
     this.glintDetector.reset();
     this.driftDetector.reset();
     this.lipTracker.reset();
-    
+
     this.isInitialized = false;
     this.sessionId = null;
     this.keyPair = null;
     this.sessionStartTime = 0;
+    this.glintDetectorAvailable = false;
+    this.mediapipeAvailable = false;
   }
 
 
@@ -464,8 +462,6 @@ export class AegisLens {
           case 'analyze':
             analyze();
             break;
-          default:
-            console.error('Unknown message type:', type);
         }
       };
 
@@ -487,7 +483,7 @@ export class AegisLens {
             wasmModule = wasmModule.instance.exports;
             self.wasmModule = wasmModule;
           } catch (error) {
-            console.error('Failed to load WASM module:', error);
+            // WASM load failure is not fatal - fallback to JS analysis
           }
         }
 
@@ -496,7 +492,6 @@ export class AegisLens {
 
       function analyze() {
         if (!int32View || !float64View) {
-          console.error('Worker not initialized');
           return;
         }
 
@@ -559,7 +554,7 @@ export class AegisLens {
             confidenceScore: confidence,
           };
         } catch (error) {
-          console.error('WASM analysis failed, falling back to JS:', error);
+          // WASM analysis failed, fallback to JS
           return analyzeWithJS(deltas);
         }
       }
