@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/aegis-lens/backend/internal/storage"
+	"github.com/go-chi/chi/v5"
 )
 
 // Mock RedisClient for testing
