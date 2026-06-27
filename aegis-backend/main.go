@@ -92,20 +92,35 @@ func main() {
 	})
 
 	var ipLimiters sync.Map
+	var sessionInitLimiters sync.Map
 
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				ip, _, err := net.SplitHostPort(r.RemoteAddr)
+			ip, _, err := net.SplitHostPort(r.RemoteAddr)
 			if err != nil {
 				ip = r.RemoteAddr
 			}
 
-			limiterIface, _ := ipLimiters.LoadOrStore(ip, rate.NewLimiter(rate.Limit(100.0), 20))
-			limiter := limiterIface.(*rate.Limiter)
+			// Stricter rate limiting for session init endpoint
+			if r.URL.Path == "/api/v2/session/init" {
+				limiterIface, _ := sessionInitLimiters.LoadOrStore(ip, rate.NewLimiter(rate.Limit(10.0), 10))
+				limiter := limiterIface.(*rate.Limiter)
 
-			if !limiter.Allow() {
-				http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
-				return
+				if !limiter.Allow() {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusTooManyRequests)
+					w.Write([]byte(`{"error":"rate_limit_exceeded","message":"Too many session requests"}`))
+					return
+				}
+			} else {
+				// Standard rate limiting for other endpoints
+				limiterIface, _ := ipLimiters.LoadOrStore(ip, rate.NewLimiter(rate.Limit(100.0), 20))
+				limiter := limiterIface.(*rate.Limiter)
+
+				if !limiter.Allow() {
+					http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+					return
+				}
 			}
 
 			next.ServeHTTP(w, r)
