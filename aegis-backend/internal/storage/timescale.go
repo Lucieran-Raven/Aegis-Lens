@@ -44,6 +44,16 @@ func NewTimescaleClient(connString string) (*TimescaleClient, error) {
 
 func (t *TimescaleClient) InitializeSchema(ctx context.Context) error {
 	queries := []string{
+		`CREATE TABLE IF NOT EXISTS schema_versions (
+			version INTEGER PRIMARY KEY,
+			applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+			description TEXT NOT NULL
+		)`,
+
+		`INSERT INTO schema_versions (version, description)
+			VALUES (1, 'Initial schema')
+			ON CONFLICT (version) DO NOTHING`,
+
 		`CREATE TABLE IF NOT EXISTS sessions (
 			session_id TEXT PRIMARY KEY,
 			client_id TEXT NOT NULL,
@@ -223,4 +233,14 @@ func (t *TimescaleClient) Close() {
 
 func (t *TimescaleClient) Ping(ctx context.Context) error {
 	return t.pool.Ping(ctx)
+}
+
+func (t *TimescaleClient) GetSchemaVersion(ctx context.Context) (int, error) {
+	query := `SELECT MAX(version) FROM schema_versions`
+	var version int
+	err := t.pool.QueryRow(ctx, query).Scan(&version)
+	if err != nil {
+		return 0, fmt.Errorf("failed to query schema version: %w", err)
+	}
+	return version, nil
 }

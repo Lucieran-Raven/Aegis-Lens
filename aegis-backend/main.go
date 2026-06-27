@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -173,25 +174,85 @@ func main() {
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		
+
+		const RequiredSchemaVersion = 1
+
 		redisCtx, redisCancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer redisCancel()
+		redisHealthy := true
 		if err := redisClient.Ping(redisCtx); err != nil {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte(`{"status":"error","service":"redis","message":"redis unavailable"}`))
-			return
+			redisHealthy = false
 		}
-		
+
 		dbCtx, dbCancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer dbCancel()
+		dbHealthy := true
+		schemaVersion := 0
 		if err := timescaleClient.Ping(dbCtx); err != nil {
+			dbHealthy = false
+		} else {
+			var err error
+			schemaVersion, err = timescaleClient.GetSchemaVersion(dbCtx)
+			if err != nil {
+				dbHealthy = false
+			}
+		}
+
+		if !redisHealthy || !dbHealthy {
 			w.WriteHeader(http.StatusServiceUnavailable)
-			_, _ = w.Write([]byte(`{"status":"error","service":"database","message":"database unavailable"}`))
+			healthResponse := map[string]interface{}{
+				"status": "unhealthy",
+				"components": map[string]interface{}{
+					"redis": map[string]string{"status": func() string {
+						if redisHealthy {
+							return "healthy"
+						}
+						return "unhealthy"
+					}()},
+					"database": map[string]interface{}{
+						"status": func() string {
+							if dbHealthy {
+								return "healthy"
+							}
+							return "unhealthy"
+						}(),
+						"schema_version": schemaVersion,
+					},
+				},
+			}
+			json.NewEncoder(w).Encode(healthResponse)
 			return
 		}
-		
+
+		if schemaVersion < RequiredSchemaVersion {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			healthResponse := map[string]interface{}{
+				"status": "degraded",
+				"components": map[string]interface{}{
+					"redis": map[string]string{"status": "healthy"},
+					"database": map[string]interface{}{
+						"status":           "schema_outdated",
+						"schema_version":   schemaVersion,
+						"required_version": RequiredSchemaVersion,
+					},
+				},
+			}
+			json.NewEncoder(w).Encode(healthResponse)
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"ok","service":"aegis-backend"}`))
+		healthResponse := map[string]interface{}{
+			"status": "healthy",
+			"components": map[string]interface{}{
+				"redis": map[string]string{"status": "healthy"},
+				"database": map[string]interface{}{
+					"status":         "healthy",
+					"schema_version": schemaVersion,
+				},
+			},
+		}
+		json.NewEncoder(w).Encode(healthResponse)
 	})
 
 	sessionInitHandler.RegisterRoutes(r)
