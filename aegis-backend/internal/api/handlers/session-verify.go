@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -83,9 +85,17 @@ type SessionVerifyResponse struct {
 	ServerTimestamp int64    `json:"server_timestamp"`
 }
 
-const (
-	MaxClockSkew = 30 * time.Second
-)
+func getMaxClockSkew() time.Duration {
+	maxSkewStr := os.Getenv("MAX_CLOCK_SKEW_SECONDS")
+	if maxSkewStr == "" {
+		return 5 * time.Second // default to 5 seconds
+	}
+	maxSkewSeconds, err := strconv.Atoi(maxSkewStr)
+	if err != nil || maxSkewSeconds < 0 {
+		return 5 * time.Second // default to 5 seconds on invalid value
+	}
+	return time.Duration(maxSkewSeconds) * time.Second
+}
 
 // validateTelemetry performs strict bounds checking on all telemetry numeric fields
 func validateTelemetry(t *TelemetryPayload) error {
@@ -229,7 +239,8 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	now := time.Now()
 	clientTime := time.UnixMilli(req.Telemetry.ClientTimestamp)
-	if now.Sub(clientTime) > MaxClockSkew || clientTime.Sub(now) > MaxClockSkew {
+	maxClockSkew := getMaxClockSkew()
+	if now.Sub(clientTime) > maxClockSkew || clientTime.Sub(now) > maxClockSkew {
 		http.Error(w, "Clock skew exceeds maximum allowed", http.StatusRequestTimeout)
 		return
 	}
