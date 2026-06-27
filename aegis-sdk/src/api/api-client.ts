@@ -42,10 +42,10 @@ export class AegisApiClient {
     }
 
     const data = await response.json();
-    
+
     return {
       sessionId: data.session_id,
-      nonce: new Uint8Array(data.nonce),
+      nonce: data.nonce,
       serverTimestamp: data.server_timestamp,
       ttlSeconds: data.ttl_seconds,
     };
@@ -63,6 +63,7 @@ export class AegisApiClient {
         telemetry: {
           session_id: request.telemetry.sessionId,
           client_timestamp: request.telemetry.clientTimestamp,
+          session_nonce: request.telemetry.sessionNonce,
           camera_timing: request.telemetry.cameraTiming ? {
             variance: request.telemetry.cameraTiming.variance,
             std_dev: request.telemetry.cameraTiming.stdDev,

@@ -1,7 +1,6 @@
 const resolve = require('@rollup/plugin-node-resolve');
 const commonjs = require('@rollup/plugin-commonjs');
 const typescript = require('@rollup/plugin-typescript');
-const dts = require('rollup-plugin-dts').default;
 
 const packageJson = require('./package.json');
 
@@ -31,14 +30,10 @@ module.exports = [
       typescript({
         tsconfig: './tsconfig.json',
         exclude: ['**/*.test.ts'],
+        declaration: true,
+        declarationDir: './dist',
       }),
     ],
-    external: ['@aegis-lens/wasm'],
-  },
-  {
-    input: 'dist/index.d.ts',
-    output: [{ file: 'dist/index.d.ts', format: 'esm' }],
-    plugins: [dts()],
     external: ['@aegis-lens/wasm'],
   },
 ];

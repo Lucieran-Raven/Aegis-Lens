@@ -8,8 +8,8 @@
  * This is a sales/demo tool - it does NOT actually cheat, just shows detection in action.
  */
 
-import { AegisLens, AegisConfig } from '../aegis-sdk/src/index';
-import { CameraTimingSignal } from '../aegis-sdk/src/proto/session';
+import { AegisLens, AegisConfig } from '../aegis-sdk/dist/index';
+import { CameraTimingSignal } from '../aegis-sdk/dist/proto/session';
 
 // Demo configuration
 const DEMO_CONFIG: AegisConfig = {
