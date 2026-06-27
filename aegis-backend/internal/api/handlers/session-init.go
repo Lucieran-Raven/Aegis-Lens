@@ -33,6 +33,7 @@ func NewSessionInitHandler(redisClient RedisClient) *SessionInitHandler {
 type SessionInitRequest struct {
 	ClientID          string `json:"client_id"`
 	DeviceFingerprint string `json:"device_fingerprint"`
+	PublicKeyPEM      string `json:"public_key_pem"`
 	UserAgent         string `json:"user_agent"`
 	Timestamp         int64  `json:"timestamp"`
 }
@@ -66,6 +67,11 @@ func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.PublicKeyPEM == "" {
+		http.Error(w, "public_key_pem is required", http.StatusBadRequest)
+		return
+	}
+
 	sessionID := uuid.New().String()
 
 	nonce := make([]byte, 32)
@@ -83,7 +89,7 @@ func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ClientID:          req.ClientID,
 		DeviceFingerprint: req.DeviceFingerprint,
 		Nonce:             nonceHex,
-		PublicKeyPEM:      "",
+		PublicKeyPEM:      req.PublicKeyPEM,
 		CreatedAt:         now,
 		ExpiresAt:         expiresAt,
 	}

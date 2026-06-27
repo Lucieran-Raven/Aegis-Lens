@@ -75,6 +75,7 @@ func TestSessionInitHandler_ServeHTTP(t *testing.T) {
 			body: SessionInitRequest{
 				ClientID:          "test_client_123",
 				DeviceFingerprint: "fp_abc123",
+				PublicKeyPEM:      "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEVs/o5+UWpC\n-----END PUBLIC KEY-----",
 				UserAgent:         "Mozilla/5.0",
 				Timestamp:         1234567890,
 			},
@@ -94,6 +95,7 @@ func TestSessionInitHandler_ServeHTTP(t *testing.T) {
 			body: SessionInitRequest{
 				ClientID:          "",
 				DeviceFingerprint: "fp_abc123",
+				PublicKeyPEM:      "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEVs/o5+UWpC\n-----END PUBLIC KEY-----",
 				UserAgent:         "Mozilla/5.0",
 				Timestamp:         1234567890,
 			},
@@ -106,6 +108,20 @@ func TestSessionInitHandler_ServeHTTP(t *testing.T) {
 			body: SessionInitRequest{
 				ClientID:          "test_client_123",
 				DeviceFingerprint: "",
+				PublicKeyPEM:      "-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEVs/o5+UWpC\n-----END PUBLIC KEY-----",
+				UserAgent:         "Mozilla/5.0",
+				Timestamp:         1234567890,
+			},
+			wantStatusCode: http.StatusBadRequest,
+			wantError:      true,
+		},
+		{
+			name:   "Missing public_key_pem",
+			method: http.MethodPost,
+			body: SessionInitRequest{
+				ClientID:          "test_client_123",
+				DeviceFingerprint: "fp_abc123",
+				PublicKeyPEM:      "",
 				UserAgent:         "Mozilla/5.0",
 				Timestamp:         1234567890,
 			},

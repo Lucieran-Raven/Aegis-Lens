@@ -237,6 +237,21 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Validate public key matches session init to prevent key swapping
+	if session.PublicKeyPEM == "" {
+		http.Error(w, "Session has no associated public key", http.StatusUnauthorized)
+		return
+	}
+	if req.PublicKeyPEM != session.PublicKeyPEM {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":   "key_mismatch",
+			"message": "Public key does not match session",
+		})
+		return
+	}
+
 	now := time.Now()
 	clientTime := time.UnixMilli(req.Telemetry.ClientTimestamp)
 	maxClockSkew := getMaxClockSkew()
@@ -251,7 +266,8 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	signatureValid, err := h.verifier.VerifySignature(req.PublicKeyPEM, req.Signature, telemetryBytes)
+	// Use session-stored public key for verification, not request key
+	signatureValid, err := h.verifier.VerifySignature(session.PublicKeyPEM, req.Signature, telemetryBytes)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("Signature verification failed: %v", err), http.StatusUnauthorized)
 		return
@@ -265,10 +281,6 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	// Delete nonce after successful verification to prevent replay
 	session.Nonce = ""
 	_ = h.redisClient.StoreSession(ctx, session)
-
-	if session.PublicKeyPEM == "" {
-		_ = h.redisClient.UpdatePublicKey(ctx, req.Telemetry.SessionID, req.PublicKeyPEM)
-	}
 
 	result := h.engine.Evaluate(ctx, &req.Telemetry)
 
