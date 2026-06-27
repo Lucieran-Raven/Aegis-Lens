@@ -9,14 +9,16 @@ import {
 
 export class PayloadBuilder {
   private sessionId: string;
+  private sessionNonce: string;
   private clientTimestamp: number;
   private cameraTiming?: CameraTimingSignal;
   private acoustic?: AcousticSignal;
   private eyeTracking?: EyeTrackingSignal;
   private lipSync?: LipSyncSignal;
 
-  constructor(sessionId: string) {
+  constructor(sessionId: string, sessionNonce: string) {
     this.sessionId = sessionId;
+    this.sessionNonce = sessionNonce;
     this.clientTimestamp = Date.now();
   }
 
@@ -114,6 +116,7 @@ export class PayloadBuilder {
     return {
       sessionId: this.sessionId,
       clientTimestamp: this.clientTimestamp,
+      sessionNonce: this.sessionNonce,
       cameraTiming: this.cameraTiming,
       acoustic: this.acoustic,
       eyeTracking: this.eyeTracking,

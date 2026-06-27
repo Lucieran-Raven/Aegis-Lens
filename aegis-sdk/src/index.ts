@@ -41,6 +41,7 @@ export class AegisLens {
   private lipTracker: LipTracker;
   private keyPair: KeyPair | null = null;
   private sessionId: string | null = null;
+  private sessionNonce: string | null = null;
   private isInitialized: boolean = false;
   private wasmUrl: string | undefined;
   private latestEntropyResult: EntropyResult | null = null;
@@ -104,6 +105,7 @@ export class AegisLens {
     });
 
     this.sessionId = sessionInit.sessionId;
+    this.sessionNonce = sessionInit.nonce;
     this.sessionStartTime = Date.now();
 
     // Initialize WebGazer for eye tracking
@@ -295,11 +297,11 @@ export class AegisLens {
   }
 
   async submitTelemetry(cameraTiming: CameraTimingSignal): Promise<SessionVerifyResponse> {
-    if (!this.sessionId || !this.keyPair) {
+    if (!this.sessionId || !this.keyPair || !this.sessionNonce) {
       throw new Error('No active session or key pair');
     }
 
-    const payloadBuilder = new PayloadBuilder(this.sessionId);
+    const payloadBuilder = new PayloadBuilder(this.sessionId, this.sessionNonce);
     payloadBuilder.setCameraTiming(cameraTiming);
 
     // Add acoustic ToF data if available

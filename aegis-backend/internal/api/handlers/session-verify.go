@@ -33,6 +33,7 @@ type SessionVerifyRequest struct {
 type TelemetryPayload struct {
 	SessionID      string              `json:"session_id"`
 	ClientTimestamp int64             `json:"client_timestamp"`
+	SessionNonce   string              `json:"session_nonce"`
 	CameraTiming   *CameraTimingSignal `json:"camera_timing,omitempty"`
 	Acoustic       *AcousticSignal     `json:"acoustic,omitempty"`
 	EyeTracking    *EyeTrackingSignal `json:"eye_tracking,omitempty"`
@@ -216,6 +217,16 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Validate nonce for replay protection
+	if session.Nonce == "" {
+		http.Error(w, "Nonce already used - replay attack detected", http.StatusUnauthorized)
+		return
+	}
+	if req.Telemetry.SessionNonce != session.Nonce {
+		http.Error(w, "Invalid nonce - replay attack detected", http.StatusUnauthorized)
+		return
+	}
+
 	now := time.Now()
 	clientTime := time.UnixMilli(req.Telemetry.ClientTimestamp)
 	if now.Sub(clientTime) > MaxClockSkew || clientTime.Sub(now) > MaxClockSkew {
@@ -239,6 +250,10 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Invalid signature", http.StatusUnauthorized)
 		return
 	}
+
+	// Delete nonce after successful verification to prevent replay
+	session.Nonce = ""
+	_ = h.redisClient.StoreSession(ctx, session)
 
 	if session.PublicKeyPEM == "" {
 		_ = h.redisClient.UpdatePublicKey(ctx, req.Telemetry.SessionID, req.PublicKeyPEM)

@@ -21,7 +21,7 @@ type SessionData struct {
 	SessionID        string    `json:"session_id"`
 	ClientID         string    `json:"client_id"`
 	DeviceFingerprint string   `json:"device_fingerprint"`
-	Nonce            []byte    `json:"nonce"`
+	Nonce            string    `json:"nonce"`
 	PublicKeyPEM     string    `json:"public_key_pem"`
 	CreatedAt        time.Time `json:"created_at"`
 	ExpiresAt        time.Time `json:"expires_at"`

@@ -19,7 +19,7 @@ export interface SessionInitRequest {
 
 export interface SessionInitResponse {
   sessionId: string;
-  nonce: Uint8Array; // 4-byte random nonce for anti-replay
+  nonce: string; // Hex-encoded 32-byte random nonce for anti-replay
   serverTimestamp: number;
   ttlSeconds: number;
 }
@@ -58,6 +58,7 @@ export interface LipSyncSignal {
 export interface TelemetryPayload {
   sessionId: string;
   clientTimestamp: number;
+  sessionNonce: string; // Nonce from session init for replay protection
   cameraTiming?: CameraTimingSignal;
   acoustic?: AcousticSignal;
   eyeTracking?: EyeTrackingSignal;
@@ -103,7 +104,7 @@ export class SessionProto {
   static encodeSessionInitResponse(res: SessionInitResponse): Uint8Array {
     const obj = {
       session_id: res.sessionId,
-      nonce: Array.from(res.nonce),
+      nonce: res.nonce,
       server_timestamp: res.serverTimestamp,
       ttl_seconds: res.ttlSeconds,
     };
@@ -114,7 +115,7 @@ export class SessionProto {
     const obj = JSON.parse(new TextDecoder().decode(data));
     return {
       sessionId: obj.session_id,
-      nonce: new Uint8Array(obj.nonce),
+      nonce: obj.nonce,
       serverTimestamp: obj.server_timestamp,
       ttlSeconds: obj.ttl_seconds,
     };
@@ -124,6 +125,7 @@ export class SessionProto {
     const obj = {
       session_id: payload.sessionId,
       client_timestamp: payload.clientTimestamp,
+      session_nonce: payload.sessionNonce,
       camera_timing: payload.cameraTiming ? {
         variance: payload.cameraTiming.variance,
         std_dev: payload.cameraTiming.stdDev,
@@ -160,6 +162,7 @@ export class SessionProto {
     return {
       sessionId: obj.session_id,
       clientTimestamp: obj.client_timestamp,
+      sessionNonce: obj.session_nonce,
       cameraTiming: obj.camera_timing ? {
         variance: obj.camera_timing.variance,
         stdDev: obj.camera_timing.std_dev,

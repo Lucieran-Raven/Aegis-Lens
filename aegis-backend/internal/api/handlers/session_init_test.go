@@ -161,8 +161,8 @@ func TestSessionInitHandler_ServeHTTP(t *testing.T) {
 				if resp.SessionID == "" {
 					t.Error("Response should contain session_id")
 				}
-				if len(resp.Nonce) != 4 {
-					t.Errorf("Nonce should be 4 bytes, got %d", len(resp.Nonce))
+				if len(resp.Nonce) != 64 {
+					t.Errorf("Nonce should be 64 hex chars (32 bytes), got %d", len(resp.Nonce))
 				}
 				if resp.TTLSeconds != 300 {
 					t.Errorf("TTL should be 300, got %d", resp.TTLSeconds)

@@ -3,6 +3,7 @@ package handlers
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -38,7 +39,7 @@ type SessionInitRequest struct {
 
 type SessionInitResponse struct {
 	SessionID       string `json:"session_id"`
-	Nonce           []byte `json:"nonce"`
+	Nonce           string `json:"nonce"`
 	ServerTimestamp int64  `json:"server_timestamp"`
 	TTLSeconds      int32  `json:"ttl_seconds"`
 }
@@ -67,11 +68,12 @@ func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	sessionID := uuid.New().String()
 
-	nonce := make([]byte, 4)
+	nonce := make([]byte, 32)
 	if _, err := rand.Read(nonce); err != nil {
 		http.Error(w, "Failed to generate nonce", http.StatusInternalServerError)
 		return
 	}
+	nonceHex := hex.EncodeToString(nonce)
 
 	now := time.Now()
 	expiresAt := now.Add(5 * time.Minute)
@@ -80,7 +82,7 @@ func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		SessionID:         sessionID,
 		ClientID:          req.ClientID,
 		DeviceFingerprint: req.DeviceFingerprint,
-		Nonce:             nonce,
+		Nonce:             nonceHex,
 		PublicKeyPEM:      "",
 		CreatedAt:         now,
 		ExpiresAt:         expiresAt,
@@ -94,7 +96,7 @@ func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp := SessionInitResponse{
 		SessionID:       sessionID,
-		Nonce:           nonce,
+		Nonce:           nonceHex,
 		ServerTimestamp: now.UnixMilli(),
 		TTLSeconds:      300,
 	}

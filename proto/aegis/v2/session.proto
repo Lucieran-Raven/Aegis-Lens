@@ -24,16 +24,17 @@ message SessionInitResponse {
 message TelemetryPayload {
   string session_id = 1;
   int64 client_timestamp = 2;
-  
+  string session_nonce = 7; // Nonce from session init for replay protection
+
   // Signal A: Camera timing entropy
   CameraTimingSignal camera_timing = 3;
-  
+
   // Signal B: Acoustic Time-of-Flight
   AcousticSignal acoustic = 4;
-  
+
   // Signal C: Eye tracking / PCCR
   EyeTrackingSignal eye_tracking = 5;
-  
+
   // Signal D: Lip-sync drift (proxy detection)
   LipSyncSignal lip_sync = 6;
 }
