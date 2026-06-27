@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -75,6 +77,15 @@ func main() {
 		Debug:            false,
 	})
 	r.Use(corsMiddleware.Handler)
+
+	r.Use(func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			requestID := generateRequestID()
+			ctx := context.WithValue(r.Context(), "request_id", requestID)
+			w.Header().Set("X-Request-ID", requestID)
+			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	})
 
 	r.Use(func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -237,4 +248,10 @@ func getEnv(key, defaultValue string) string {
 		return value
 	}
 	return defaultValue
+}
+
+func generateRequestID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }

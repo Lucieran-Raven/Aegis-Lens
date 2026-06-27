@@ -46,29 +46,64 @@ type SessionInitResponse struct {
 }
 
 func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	requestID, _ := r.Context().Value("request_id").(string)
+	if requestID == "" {
+		requestID = "unknown"
+	}
+
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "method_not_allowed",
+			"message":    "Method not allowed",
+			"request_id": requestID,
+		})
 		return
 	}
 
 	var req SessionInitRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "invalid_request",
+			"message":    fmt.Sprintf("Invalid request body: %v", err),
+			"request_id": requestID,
+		})
 		return
 	}
 
 	if req.ClientID == "" {
-		http.Error(w, "client_id is required", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "missing_field",
+			"message":    "client_id is required",
+			"request_id": requestID,
+		})
 		return
 	}
 
 	if req.DeviceFingerprint == "" {
-		http.Error(w, "device_fingerprint is required", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "missing_field",
+			"message":    "device_fingerprint is required",
+			"request_id": requestID,
+		})
 		return
 	}
 
 	if req.PublicKeyPEM == "" {
-		http.Error(w, "public_key_pem is required", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "missing_field",
+			"message":    "public_key_pem is required",
+			"request_id": requestID,
+		})
 		return
 	}
 
@@ -76,7 +111,13 @@ func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	nonce := make([]byte, 32)
 	if _, err := rand.Read(nonce); err != nil {
-		http.Error(w, "Failed to generate nonce", http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "internal_error",
+			"message":    "Failed to generate nonce",
+			"request_id": requestID,
+		})
 		return
 	}
 	nonceHex := hex.EncodeToString(nonce)
@@ -96,7 +137,13 @@ func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	if err := h.redisClient.StoreSession(ctx, session); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to store session: %v", err), http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "internal_error",
+			"message":    fmt.Sprintf("Failed to store session: %v", err),
+			"request_id": requestID,
+		})
 		return
 	}
 
@@ -110,7 +157,13 @@ func (h *SessionInitHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "internal_error",
+			"message":    "Failed to encode response",
+			"request_id": requestID,
+		})
 		return
 	}
 }

@@ -200,70 +200,131 @@ func validateTelemetry(t *TelemetryPayload) error {
 }
 
 func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	requestID, _ := r.Context().Value("request_id").(string)
+	if requestID == "" {
+		requestID = "unknown"
+	}
+
 	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "method_not_allowed",
+			"message":    "Method not allowed",
+			"request_id": requestID,
+		})
 		return
 	}
 
 	var req SessionVerifyRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "invalid_request",
+			"message":    fmt.Sprintf("Invalid request body: %v", err),
+			"request_id": requestID,
+		})
 		return
 	}
 
 	if req.Telemetry.SessionID == "" {
-		http.Error(w, "session_id is required", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "missing_field",
+			"message":    "session_id is required",
+			"request_id": requestID,
+		})
 		return
 	}
 
 	if err := validateTelemetry(&req.Telemetry); err != nil {
-		http.Error(w, fmt.Sprintf("Invalid telemetry data: %v", err), http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "invalid_telemetry",
+			"message":    fmt.Sprintf("Invalid telemetry data: %v", err),
+			"request_id": requestID,
+		})
 		return
 	}
 
 	ctx := r.Context()
 	session, err := h.redisClient.GetSession(ctx, req.Telemetry.SessionID)
 	if err != nil {
-		http.Error(w, "Invalid or expired session", http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "invalid_session",
+			"message":    "Invalid or expired session",
+			"request_id": requestID,
+		})
 		return
 	}
 
 	// Validate nonce for replay protection
 	if session.Nonce == "" {
-		http.Error(w, "Nonce already used - replay attack detected", http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "replay_attack",
+			"message":    "Nonce already used - replay attack detected",
+			"request_id": requestID,
+		})
 		return
 	}
 	if req.Telemetry.SessionNonce != session.Nonce {
-		http.Error(w, "Invalid nonce - replay attack detected", http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "replay_attack",
+			"message":    "Invalid nonce - replay attack detected",
+			"request_id": requestID,
+		})
 		return
 	}
 
 	// Validate public key matches session init to prevent key swapping
 	if session.PublicKeyPEM == "" {
-		http.Error(w, "Session has no associated public key", http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "key_mismatch",
+			"message":    "Session has no associated public key",
+			"request_id": requestID,
+		})
 		return
 	}
 	if req.PublicKeyPEM != session.PublicKeyPEM {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{
-			"error":   "key_mismatch",
-			"message": "Public key does not match session",
+			"error":      "key_mismatch",
+			"message":    "Public key does not match session",
+			"request_id": requestID,
 		})
 		return
 	}
 
 	// Validate device fingerprint to detect device switching
 	if req.Telemetry.DeviceFingerprint == "" {
-		http.Error(w, "device_fingerprint is required", http.StatusBadRequest)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "missing_field",
+			"message":    "device_fingerprint is required",
+			"request_id": requestID,
+		})
 		return
 	}
 	if req.Telemetry.DeviceFingerprint != session.DeviceFingerprint {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		json.NewEncoder(w).Encode(map[string]string{
-			"error":   "device_mismatch",
-			"message": "Device fingerprint mismatch detected",
+			"error":      "device_mismatch",
+			"message":    "Device fingerprint mismatch detected",
+			"request_id": requestID,
 		})
 		return
 	}
@@ -272,25 +333,49 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	clientTime := time.UnixMilli(req.Telemetry.ClientTimestamp)
 	maxClockSkew := getMaxClockSkew()
 	if now.Sub(clientTime) > maxClockSkew || clientTime.Sub(now) > maxClockSkew {
-		http.Error(w, "Clock skew exceeds maximum allowed", http.StatusRequestTimeout)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusRequestTimeout)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "clock_skew",
+			"message":    "Clock skew exceeds maximum allowed",
+			"request_id": requestID,
+		})
 		return
 	}
 
 	telemetryBytes, err := json.Marshal(req.Telemetry)
 	if err != nil {
-		http.Error(w, "Failed to marshal telemetry", http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "internal_error",
+			"message":    "Failed to marshal telemetry",
+			"request_id": requestID,
+		})
 		return
 	}
 
 	// Use session-stored public key for verification, not request key
 	signatureValid, err := h.verifier.VerifySignature(session.PublicKeyPEM, req.Signature, telemetryBytes)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("Signature verification failed: %v", err), http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "signature_error",
+			"message":    fmt.Sprintf("Signature verification failed: %v", err),
+			"request_id": requestID,
+		})
 		return
 	}
 
 	if !signatureValid {
-		http.Error(w, "Invalid signature", http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "invalid_signature",
+			"message":    "Invalid signature",
+			"request_id": requestID,
+		})
 		return
 	}
 
@@ -311,7 +396,13 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":      "internal_error",
+			"message":    "Failed to encode response",
+			"request_id": requestID,
+		})
 		return
 	}
 }
