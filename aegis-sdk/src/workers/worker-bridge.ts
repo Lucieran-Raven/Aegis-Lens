@@ -64,7 +64,7 @@ export class WorkerBridge {
       tailIndex: this.TAIL_INDEX,
       dataStart: this.DATA_START,
       wasmUrl: wasmUrl,
-    }, [this.sharedBuffer]);
+    });
 
     this.isInitialized = true;
   }

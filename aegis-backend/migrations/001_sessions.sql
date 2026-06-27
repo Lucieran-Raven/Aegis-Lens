@@ -5,6 +5,18 @@
 -- Enable TimescaleDB extension
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 
+-- Create schema versions table for migration tracking
+CREATE TABLE IF NOT EXISTS schema_versions (
+    version INTEGER PRIMARY KEY,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    description TEXT NOT NULL
+);
+
+-- Insert initial schema version
+INSERT INTO schema_versions (version, description)
+    VALUES (1, 'Initial schema - sessions and events tables')
+    ON CONFLICT (version) DO NOTHING;
+
 -- Create sessions table
 CREATE TABLE IF NOT EXISTS sessions (
     id BIGSERIAL PRIMARY KEY,
@@ -17,7 +29,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     client_ip VARCHAR(45),
     user_agent TEXT,
     status VARCHAR(20) DEFAULT 'active',
-    
+
     -- Telemetry summary (for audit purposes only, no PII)
     last_verified_at TIMESTAMPTZ,
     verification_count INTEGER DEFAULT 0,
@@ -25,25 +37,27 @@ CREATE TABLE IF NOT EXISTS sessions (
     verdict VARCHAR(20)
 );
 
--- Convert to hypertable for time-series optimization
-SELECT create_hypertable('sessions', 'created_at', if_not_exists => TRUE);
+-- Note: Hypertable conversion disabled for development
+-- TimescaleDB requires partitioning column in primary key
+-- Uncomment when schema is refactored for hypertable support
+-- SELECT create_hypertable('sessions', 'created_at', if_not_exists => TRUE);
+
+-- Create unique index on session_id
+CREATE UNIQUE INDEX idx_sessions_session_id ON sessions(session_id);
 
 -- Create indexes for fast lookups
-CREATE INDEX idx_sessions_session_id ON sessions(session_id);
 CREATE INDEX idx_sessions_created_at ON sessions(created_at DESC);
 CREATE INDEX idx_sessions_expires_at ON sessions(expires_at);
 CREATE INDEX idx_sessions_status ON sessions(status) WHERE status = 'active';
 
--- Add compression policy for older data (compress data older than 1 hour)
-ALTER TABLE sessions SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'session_id'
-);
-
-SELECT add_compression_policy('sessions', INTERVAL '1 hour');
-
--- Add retention policy (drop sessions older than 24 hours for compliance)
-SELECT add_retention_policy('sessions', INTERVAL '24 hours');
+-- Note: Compression and retention policies disabled for development
+-- These require hypertable conversion
+-- ALTER TABLE sessions SET (
+--     timescaledb.compress,
+--     timescaledb.compress_segmentby = 'session_id'
+-- );
+-- SELECT add_compression_policy('sessions', INTERVAL '1 hour');
+-- SELECT add_retention_policy('sessions', INTERVAL '24 hours');
 
 -- Create trigger for automatic cleanup of expired sessions
 CREATE OR REPLACE FUNCTION cleanup_expired_sessions()

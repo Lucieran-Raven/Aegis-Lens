@@ -16,8 +16,8 @@ export class AegisApiClient {
 
   constructor(config: AegisClientConfig) {
     this.config = {
-      timeoutMs: 10000,
       ...config,
+      timeoutMs: config.timeoutMs ?? 10000,
     };
   }
 

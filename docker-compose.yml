@@ -30,7 +30,7 @@ services:
     environment:
       POSTGRES_DB: aegis
       POSTGRES_USER: aegis_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aegis_secure_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       TS_TUNE_MEMORY: 2GB
       TS_TUNE_MAX_CONCURRENCY: 4
     volumes:
@@ -62,8 +62,9 @@ services:
       POSTGRES_PORT: 5432
       POSTGRES_DB: aegis
       POSTGRES_USER: aegis_user
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-aegis_secure_password}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       LOG_LEVEL: info
+      ALLOWED_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
     depends_on:
       redis:
         condition: service_healthy

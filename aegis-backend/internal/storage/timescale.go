@@ -43,51 +43,16 @@ func NewTimescaleClient(connString string) (*TimescaleClient, error) {
 }
 
 func (t *TimescaleClient) InitializeSchema(ctx context.Context) error {
-	queries := []string{
-		`CREATE TABLE IF NOT EXISTS schema_versions (
-			version INTEGER PRIMARY KEY,
-			applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			description TEXT NOT NULL
-		)`,
-
-		`INSERT INTO schema_versions (version, description)
-			VALUES (1, 'Initial schema')
-			ON CONFLICT (version) DO NOTHING`,
-
-		`CREATE TABLE IF NOT EXISTS sessions (
-			session_id TEXT PRIMARY KEY,
-			client_id TEXT NOT NULL,
-			device_fingerprint TEXT NOT NULL,
-			public_key_pem TEXT,
-			created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-			expires_at TIMESTAMPTZ NOT NULL
-		)`,
-
-		`CREATE TABLE IF NOT EXISTS verification_events (
-			id BIGSERIAL PRIMARY KEY,
-			session_id TEXT NOT NULL REFERENCES sessions(session_id),
-			verdict TEXT NOT NULL,
-			confidence_score DOUBLE PRECISION NOT NULL,
-			signal_flags JSONB,
-			camera_variance DOUBLE PRECISION,
-			audio_tof DOUBLE PRECISION,
-			timestamp TIMESTAMPTZ NOT NULL DEFAULT NOW()
-		)`,
-
-		`SELECT create_hypertable('sessions', 'created_at', if_not_exists => TRUE)`,
-
-		`SELECT create_hypertable('verification_events', 'timestamp', if_not_exists => TRUE)`,
-
-		`CREATE INDEX IF NOT EXISTS idx_sessions_client_id ON sessions(client_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_verification_events_session_id ON verification_events(session_id)`,
-		`CREATE INDEX IF NOT EXISTS idx_verification_events_timestamp ON verification_events(timestamp DESC)`,
-		`CREATE INDEX IF NOT EXISTS idx_verification_events_verdict ON verification_events(verdict)`,
+	// Schema is now managed by SQL migrations in /docker-entrypoint-initdb.d
+	// This function only verifies the schema exists
+	var tableExists bool
+	err := t.pool.QueryRow(ctx, "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'sessions')").Scan(&tableExists)
+	if err != nil {
+		return fmt.Errorf("failed to check schema: %w", err)
 	}
 
-	for _, query := range queries {
-		if _, err := t.pool.Exec(ctx, query); err != nil {
-			return fmt.Errorf("failed to execute schema query: %w", err)
-		}
+	if !tableExists {
+		return fmt.Errorf("schema not found - ensure migrations ran successfully")
 	}
 
 	return nil

@@ -53,8 +53,10 @@ CREATE TABLE IF NOT EXISTS events (
     session_fk BIGINT REFERENCES sessions(id) ON DELETE SET NULL
 );
 
--- Convert to hypertable for time-series optimization
-SELECT create_hypertable('events', 'timestamp', if_not_exists => TRUE);
+-- Note: Hypertable conversion disabled for development
+-- TimescaleDB requires partitioning column in primary key
+-- Uncomment when schema is refactored for hypertable support
+-- SELECT create_hypertable('events', 'timestamp', if_not_exists => TRUE);
 
 -- Create indexes for fast queries
 CREATE INDEX idx_events_session_id ON events(session_id);
@@ -66,57 +68,14 @@ CREATE INDEX idx_events_timestamp_session ON events(timestamp DESC, session_id);
 -- Create composite index for common analytics queries
 CREATE INDEX idx_events_session_timestamp ON events(session_id, timestamp DESC);
 
--- Add compression policy for older data (compress data older than 1 hour)
-ALTER TABLE events SET (
-    timescaledb.compress,
-    timescaledb.compress_segmentby = 'session_id'
-);
-
-SELECT add_compression_policy('events', INTERVAL '1 hour');
-
--- Add retention policy (keep events for 90 days for compliance)
-SELECT add_retention_policy('events', INTERVAL '90 days');
-
--- Create continuous aggregate for hourly statistics (for analytics dashboard)
-CREATE MATERIALIZED VIEW events_hourly_stats
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 hour', timestamp) AS bucket,
-    event_type,
-    verdict,
-    COUNT(*) AS event_count,
-    AVG(composite_score) AS avg_score,
-    AVG(processing_time_ms) AS avg_processing_time,
-    AVG(tof_ms) AS avg_tof,
-    AVG(frame_variance) AS avg_frame_variance
-FROM events
-GROUP BY bucket, event_type, verdict;
-
--- Refresh policy for continuous aggregate (every 10 minutes)
-SELECT add_continuous_aggregate_policy('events_hourly_stats',
-    start_offset => INTERVAL '1 hour',
-    end_offset => INTERVAL '10 minutes',
-    schedule_interval => INTERVAL '10 minutes');
-
--- Create continuous aggregate for daily statistics (for long-term analytics)
-CREATE MATERIALIZED VIEW events_daily_stats
-WITH (timescaledb.continuous) AS
-SELECT
-    time_bucket('1 day', timestamp) AS bucket,
-    verdict,
-    COUNT(*) AS event_count,
-    AVG(composite_score) AS avg_score,
-    COUNT(*) FILTER (WHERE verdict = 'BLOCKED') AS blocked_count,
-    COUNT(*) FILTER (WHERE verdict = 'SUSPICIOUS') AS suspicious_count,
-    COUNT(*) FILTER (WHERE verdict = 'CLEAR') AS clear_count
-FROM events
-GROUP BY bucket, verdict;
-
--- Refresh policy for daily aggregate (every 1 hour)
-SELECT add_continuous_aggregate_policy('events_daily_stats',
-    start_offset => INTERVAL '1 day',
-    end_offset => INTERVAL '1 hour',
-    schedule_interval => INTERVAL '1 hour');
+-- Note: Compression, retention, and continuous aggregates disabled for development
+-- These require hypertable conversion
+-- ALTER TABLE events SET (
+--     timescaledb.compress,
+--     timescaledb.compress_segmentby = 'session_id'
+-- );
+-- SELECT add_compression_policy('events', INTERVAL '1 hour');
+-- SELECT add_retention_policy('events', INTERVAL '90 days');
 
 -- Create function to log verification events
 CREATE OR REPLACE FUNCTION log_verification_event(

@@ -5,6 +5,7 @@ export interface ToFResult {
   peakIndex: number;
   phaseSignatureValid: boolean;
   sampleCount: number;
+  spectralEntropy: number;
 }
 
 export interface ToFConfig {
@@ -33,6 +34,7 @@ export class ToFAnalyzer {
         peakIndex: 0,
         phaseSignatureValid: false,
         sampleCount: 0,
+        spectralEntropy: 0,
       };
     }
 
@@ -48,12 +50,15 @@ export class ToFAnalyzer {
     const maxDelaySamples = Math.floor((this.config.maxDelayMs / 1000) * this.config.sampleRate);
     const phaseSignatureValid = peakResult.peakIndex <= maxDelaySamples && peakResult.peakValue >= this.config.minCorrelation;
 
+    const spectralEntropy = this.computeSpectralEntropy(response);
+
     return {
       timeOfFlightMs,
       correlationPeak: peakResult.peakValue,
       peakIndex: peakResult.peakIndex,
       phaseSignatureValid,
       sampleCount: response.length,
+      spectralEntropy,
     };
   }
 

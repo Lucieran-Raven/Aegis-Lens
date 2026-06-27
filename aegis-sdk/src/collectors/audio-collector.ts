@@ -62,10 +62,16 @@ export class AudioCollector {
     try {
       this.mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
     } catch (error) {
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-        video: false,
-      });
+      // Fallback to basic audio constraints if detailed constraints fail
+      // This can happen in some browser environments
+      try {
+        this.mediaStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: false,
+        });
+      } catch (fallbackError) {
+        throw new Error(`Failed to get microphone access: ${fallbackError instanceof Error ? fallbackError.message : String(fallbackError)}`);
+      }
     }
 
     const source = this.audioContext.createMediaStreamSource(this.mediaStream);
@@ -73,6 +79,8 @@ export class AudioCollector {
     try {
       await this.setupAudioWorklet(source);
     } catch (error) {
+      // AudioWorklet not supported in this browser, fallback to ScriptProcessor
+      // ScriptProcessor is deprecated but widely supported
       this.setupScriptProcessor(source);
     }
 

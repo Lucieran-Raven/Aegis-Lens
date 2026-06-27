@@ -24,12 +24,22 @@ import (
 )
 
 func main() {
-	redisAddr := getEnv("REDIS_ADDR", "localhost:6379")
-	timescaleConn := getEnv("TIMESCALE_CONN", "postgres://localhost/aegis?sslmode=disable")
-	serverPort := getEnv("SERVER_PORT", "8443")
+	redisHost := getEnv("REDIS_HOST", "localhost")
+	redisPort := getEnv("REDIS_PORT", "6379")
+	redisAddr := fmt.Sprintf("%s:%s", redisHost, redisPort)
+
+	timescaleHost := getEnv("POSTGRES_HOST", "localhost")
+	timescalePort := getEnv("POSTGRES_PORT", "5432")
+	timescaleDB := getEnv("POSTGRES_DB", "aegis")
+	timescaleUser := getEnv("POSTGRES_USER", "aegis_user")
+	timescalePassword := getEnv("POSTGRES_PASSWORD", "aegis_secure_password")
+	timescaleConn := fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=disable", timescaleUser, timescalePassword, timescaleHost, timescalePort, timescaleDB)
+
+	serverPort := getEnv("PORT", "8080")
 	tlsCertPath := getEnv("TLS_CERT_PATH", "/etc/ssl/certs/aegis-backend.crt")
 	tlsKeyPath := getEnv("TLS_KEY_PATH", "/etc/ssl/private/aegis-backend.key")
 	allowedOrigins := getEnv("ALLOWED_ORIGINS", "https://yourdomain.com,https://app.yourdomain.com")
+	enableTLS := getEnv("ENABLE_TLS", "false") == "true"
 
 	redisClient, err := storage.NewRedisClient(redisAddr)
 	if err != nil {
@@ -261,6 +271,8 @@ func main() {
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
 			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
@@ -282,9 +294,16 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Aegis Lens v2.0 Backend starting on port %s (HTTPS)", serverPort)
-		if err := server.ListenAndServeTLS(tlsCertPath, tlsKeyPath); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Server failed to start: %v", err)
+		if enableTLS {
+			log.Printf("Aegis Lens v2.0 Backend starting on port %s (HTTPS)", serverPort)
+			if err := server.ListenAndServeTLS(tlsCertPath, tlsKeyPath); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Server failed to start: %v", err)
+			}
+		} else {
+			log.Printf("Aegis Lens v2.0 Backend starting on port %s (HTTP)", serverPort)
+			if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Server failed to start: %v", err)
+			}
 		}
 	}()
 

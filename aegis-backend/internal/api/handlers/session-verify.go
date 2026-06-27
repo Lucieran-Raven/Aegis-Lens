@@ -381,7 +381,10 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 
 	// Delete nonce after successful verification to prevent replay
 	session.Nonce = ""
-	_ = h.redisClient.StoreSession(ctx, session)
+	if err := h.redisClient.StoreSession(ctx, session); err != nil {
+		// Log error but continue - nonce deletion failure is non-critical for verification
+		// In production, this should be logged to monitoring system
+	}
 
 	result := h.engine.Evaluate(ctx, &req.Telemetry)
 

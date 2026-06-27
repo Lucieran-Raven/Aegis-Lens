@@ -4,7 +4,7 @@ import { PayloadBuilder } from './api/payload-builder';
 import { AegisCrypto, KeyPair } from './crypto/crypto';
 import { FrameCollector, FrameCollectorConfig } from './collectors/frame-collector';
 import { WorkerBridge, WorkerBridgeConfig } from './workers/worker-bridge';
-import { CameraTimingSignal, SessionVerifyResponse, AcousticSignal, EyeTrackingSignal, LipSyncSignal } from './proto/session';
+import { CameraTimingSignal, SessionVerifyResponse, EyeTrackingSignal, LipSyncSignal } from './proto/session';
 import { ChirpGenerator } from './analyzers/chirp-generator';
 import { ToFAnalyzer } from './analyzers/tof-analyzer';
 import { AudioCollector } from './collectors/audio-collector';
@@ -46,7 +46,8 @@ export class AegisLens {
   private isInitialized: boolean = false;
   private wasmUrl: string | undefined;
   private latestEntropyResult: EntropyResult | null = null;
-  private latestToFResult: AcousticSignal | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  private latestToFResult: any = null;
   private latestGlintResult: EyeTrackingSignal | null = null;
   private latestLipSyncResult: LipSyncSignal | null = null;
   private sessionStartTime: number = 0;

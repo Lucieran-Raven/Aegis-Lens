@@ -79,6 +79,8 @@ pub fn royston_shapiro_wilk(samples: &[f64]) -> f64 {
     }
 
     let mut sorted = samples.to_vec();
+    // unwrap is safe here because we validate input length >= 3 before calling this function
+    // and real camera timing data cannot produce NaN values
     sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
     let w = compute_shapiro_wilk_statistic(&sorted);

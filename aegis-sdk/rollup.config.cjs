@@ -20,6 +20,13 @@ module.exports = [
         sourcemap: true,
         inlineDynamicImports: true,
       },
+      {
+        file: 'dist/index.browser.js',
+        format: 'umd',
+        name: 'AegisLensSDK',
+        sourcemap: true,
+        inlineDynamicImports: true,
+      },
     ],
     plugins: [
       resolve({
