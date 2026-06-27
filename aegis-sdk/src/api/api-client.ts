@@ -32,6 +32,7 @@ export class AegisApiClient {
       body: JSON.stringify({
         client_id: request.clientId,
         device_fingerprint: request.deviceFingerprint,
+        public_key_pem: request.publicKeyPem,
         user_agent: request.userAgent,
         timestamp: request.timestamp,
       }),
@@ -64,6 +65,7 @@ export class AegisApiClient {
           session_id: request.telemetry.sessionId,
           client_timestamp: request.telemetry.clientTimestamp,
           session_nonce: request.telemetry.sessionNonce,
+          device_fingerprint: request.telemetry.deviceFingerprint,
           camera_timing: request.telemetry.cameraTiming ? {
             variance: request.telemetry.cameraTiming.variance,
             std_dev: request.telemetry.cameraTiming.stdDev,

@@ -13,6 +13,7 @@ export enum Verdict {
 export interface SessionInitRequest {
   clientId: string;
   deviceFingerprint: string;
+  publicKeyPem: string;
   userAgent: string;
   timestamp: number;
 }
@@ -59,6 +60,7 @@ export interface TelemetryPayload {
   sessionId: string;
   clientTimestamp: number;
   sessionNonce: string; // Nonce from session init for replay protection
+  deviceFingerprint: string; // Device fingerprint for device switching detection
   cameraTiming?: CameraTimingSignal;
   acoustic?: AcousticSignal;
   eyeTracking?: EyeTrackingSignal;
@@ -85,6 +87,7 @@ export class SessionProto {
     const obj = {
       client_id: req.clientId,
       device_fingerprint: req.deviceFingerprint,
+      public_key_pem: req.publicKeyPem,
       user_agent: req.userAgent,
       timestamp: req.timestamp,
     };
@@ -96,6 +99,7 @@ export class SessionProto {
     return {
       clientId: obj.client_id,
       deviceFingerprint: obj.device_fingerprint,
+      publicKeyPem: obj.public_key_pem,
       userAgent: obj.user_agent,
       timestamp: obj.timestamp,
     };
@@ -126,6 +130,7 @@ export class SessionProto {
       session_id: payload.sessionId,
       client_timestamp: payload.clientTimestamp,
       session_nonce: payload.sessionNonce,
+      device_fingerprint: payload.deviceFingerprint,
       camera_timing: payload.cameraTiming ? {
         variance: payload.cameraTiming.variance,
         std_dev: payload.cameraTiming.stdDev,
@@ -163,6 +168,7 @@ export class SessionProto {
       sessionId: obj.session_id,
       clientTimestamp: obj.client_timestamp,
       sessionNonce: obj.session_nonce,
+      deviceFingerprint: obj.device_fingerprint,
       cameraTiming: obj.camera_timing ? {
         variance: obj.camera_timing.variance,
         stdDev: obj.camera_timing.std_dev,

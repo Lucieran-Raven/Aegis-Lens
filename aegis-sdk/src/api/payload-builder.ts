@@ -10,15 +10,17 @@ import {
 export class PayloadBuilder {
   private sessionId: string;
   private sessionNonce: string;
+  private deviceFingerprint: string;
   private clientTimestamp: number;
   private cameraTiming?: CameraTimingSignal;
   private acoustic?: AcousticSignal;
   private eyeTracking?: EyeTrackingSignal;
   private lipSync?: LipSyncSignal;
 
-  constructor(sessionId: string, sessionNonce: string) {
+  constructor(sessionId: string, sessionNonce: string, deviceFingerprint: string) {
     this.sessionId = sessionId;
     this.sessionNonce = sessionNonce;
+    this.deviceFingerprint = deviceFingerprint;
     this.clientTimestamp = Date.now();
   }
 
@@ -117,6 +119,7 @@ export class PayloadBuilder {
       sessionId: this.sessionId,
       clientTimestamp: this.clientTimestamp,
       sessionNonce: this.sessionNonce,
+      deviceFingerprint: this.deviceFingerprint,
       cameraTiming: this.cameraTiming,
       acoustic: this.acoustic,
       eyeTracking: this.eyeTracking,

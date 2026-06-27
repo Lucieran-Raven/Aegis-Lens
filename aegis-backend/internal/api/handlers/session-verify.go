@@ -33,13 +33,14 @@ type SessionVerifyRequest struct {
 }
 
 type TelemetryPayload struct {
-	SessionID      string              `json:"session_id"`
-	ClientTimestamp int64             `json:"client_timestamp"`
-	SessionNonce   string              `json:"session_nonce"`
-	CameraTiming   *CameraTimingSignal `json:"camera_timing,omitempty"`
-	Acoustic       *AcousticSignal     `json:"acoustic,omitempty"`
-	EyeTracking    *EyeTrackingSignal `json:"eye_tracking,omitempty"`
-	LipSync        *LipSyncSignal     `json:"lip_sync,omitempty"`
+	SessionID         string              `json:"session_id"`
+	ClientTimestamp   int64               `json:"client_timestamp"`
+	SessionNonce      string              `json:"session_nonce"`
+	DeviceFingerprint string              `json:"device_fingerprint"`
+	CameraTiming      *CameraTimingSignal `json:"camera_timing,omitempty"`
+	Acoustic          *AcousticSignal     `json:"acoustic,omitempty"`
+	EyeTracking       *EyeTrackingSignal `json:"eye_tracking,omitempty"`
+	LipSync           *LipSyncSignal     `json:"lip_sync,omitempty"`
 }
 
 type CameraTimingSignal struct {
@@ -248,6 +249,21 @@ func (h *SessionVerifyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request)
 		json.NewEncoder(w).Encode(map[string]string{
 			"error":   "key_mismatch",
 			"message": "Public key does not match session",
+		})
+		return
+	}
+
+	// Validate device fingerprint to detect device switching
+	if req.Telemetry.DeviceFingerprint == "" {
+		http.Error(w, "device_fingerprint is required", http.StatusBadRequest)
+		return
+	}
+	if req.Telemetry.DeviceFingerprint != session.DeviceFingerprint {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		json.NewEncoder(w).Encode(map[string]string{
+			"error":   "device_mismatch",
+			"message": "Device fingerprint mismatch detected",
 		})
 		return
 	}
