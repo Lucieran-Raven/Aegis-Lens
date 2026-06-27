@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -51,8 +52,10 @@ func main() {
 
 	r := chi.NewRouter()
 
+	corsOrigins := strings.Split(allowedOrigins, ",")
 	originsList := []string{}
-	for _, origin := range []string{allowedOrigins} {
+	for _, origin := range corsOrigins {
+		origin = strings.TrimSpace(origin)
 		if origin != "" {
 			originsList = append(originsList, origin)
 		}
