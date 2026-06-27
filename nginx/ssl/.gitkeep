@@ -1,0 +1,3 @@
+# SSL certificates should be placed here
+# DO NOT commit real certificates to git
+# Use Let's Encrypt or your own certificate authority
