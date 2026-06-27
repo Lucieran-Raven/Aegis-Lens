@@ -108,18 +108,18 @@ export class AegisLens {
 
     // Initialize WebGazer for eye tracking
     try {
-      // @ts-ignore - webgazer is loaded dynamically
+      // @ts-expect-error - webgazer is loaded dynamically
       const webgazer = await import('webgazer');
       this.webgazer = webgazer;
-      
-      // @ts-ignore
+
+      // @ts-ignore - webgazer types not available
       await this.webgazer.setVideoElement(this.videoElement);
-      
-      // @ts-ignore
+
+      // @ts-ignore - webgazer types not available
       await this.webgazer.begin();
-      
+
       // Set up gaze listener
-      // @ts-ignore
+      // @ts-ignore - webgazer types not available
       this.webgazer.setGazeListener((data: any) => {
         if (data && data.x !== null && data.y !== null) {
           this.glintDetector.addGazePoint(data.x, data.y, Date.now());
@@ -139,7 +139,7 @@ export class AegisLens {
     try {
       // @ts-ignore - MediaPipe is loaded dynamically
       const { FaceMesh } = await import('@mediapipe/face_mesh');
-      // @ts-ignore
+      // @ts-ignore - MediaPipe Camera types not available
       const { Camera } = await import('@mediapipe/camera_utils');
       
       this.faceMesh = new FaceMesh({locateFile: (file: string) => {
@@ -176,7 +176,7 @@ export class AegisLens {
         }
       });
       
-      // @ts-ignore
+      // @ts-ignore - MediaPipe Camera types not available
       const camera = new Camera(this.videoElement, {
         onFrame: async () => {
           await this.faceMesh.send({image: this.videoElement});
@@ -185,7 +185,7 @@ export class AegisLens {
         height: 480
       });
       
-      // @ts-ignore
+      // @ts-ignore - MediaPipe Camera types not available
       await camera.start();
       
       this.mediapipeAvailable = true;
@@ -416,7 +416,7 @@ export class AegisLens {
     // Stop WebGazer if initialized
     if (this.webgazer) {
       try {
-        // @ts-ignore
+        // @ts-ignore - webgazer types not available
         this.webgazer.end();
       } catch (error) {
         console.warn('WebGazer cleanup failed:', error);
