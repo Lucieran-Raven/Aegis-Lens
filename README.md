@@ -89,6 +89,11 @@ See [examples/attack-simulation.ts](examples/attack-simulation.ts) for a compreh
 - Input validation with NaN/Infinity/bounds checking
 - Circular buffer memory management to prevent leaks
 
+## Browser Support
+
+See [Browser Compatibility Guide](docs/BROWSER_COMPATIBILITY.md)
+**Recommended: Chrome 94+ for full detection capability**
+
 ## Environment Variables
 
 See [`.env.example`](.env.example) for the complete list of required environment variables.
